@@ -83,15 +83,36 @@
       position: absolute;
       top: 0; left: 0;
       background-color: var(--bg-surface);
-      padding: 24px;
+      
+      /* Increased top padding from 24px to 48px to clear mobile camera notches/bezels */
+      padding: calc(24px + env(safe-area-inset-top, 24px)) 24px 24px 24px;
+      
       overflow-y: auto;
     }
 
     /* Start Screen Specific */
     #loginSection { padding: 0; }
+    
     .splash-logo {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0;
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%);
+      
+      /* ==============================================================
+         FLEXIBLE SPLASH LOGO SIZE
+         Change width, height, and object-fit below to adjust the image.
+         - For Full Screen: width: 100%; height: 100%; object-fit: cover;
+         - For Custom Size: width: 250px; height: 250px; object-fit: contain;
+         ============================================================== */
+      width: 99%; 
+      height: 100%; 
+      object-fit: cover; 
+      /* ============================================================== */
+      
+      z-index: 0;
     }
+    
     .splash-content {
       position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: flex-end;
       height: 100%; padding: 32px 24px 48px 24px; background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 60%);
@@ -302,9 +323,7 @@
 
 <div id="appContainer">
 
-  <!-- Splash / Login Screen -->
-  <!-- Note: Removed the inline style="display: flex;" so the script above manages it seamlessly -->
-  <div class="section" id="loginSection">
+  <div class="section" id="loginSection" style="padding: 0;">
     <img src="splitkar.png" class="splash-logo" alt="Split Kar Logo"
     onerror="this.onerror=null; this.src='https://placehold.co/400x800/38B2AC/ffffff?text=Split+Kar';">
     <div class="splash-content">
@@ -312,7 +331,6 @@
     </div>
   </div>
 
-  <!-- Auth Section (Login & Signup) -->
   <div class="section" id="authSection">
     <div class="header">
       <i class="fas fa-arrow-left back-btn" onclick="window.showLoginSection()"></i>
@@ -326,7 +344,6 @@
         <div class="split-tab-indicator" id="authTabIndicator" style="width:50%; transform: translateX(0);"></div>
     </div>
 
-    <!-- Login Form -->
     <div class="content-container" id="loginForm">
         <div style="margin-bottom: 16px;">
             <label>Phone Number</label>
@@ -339,7 +356,6 @@
         <button class="next-button" onclick="window.handleLogin()" style="margin-top: 10px;">Login</button>
     </div>
 
-    <!-- Signup Form -->
     <div class="content-container hidden" id="signupForm">
         <div style="margin-bottom: 16px;">
             <label>Your Name</label>
@@ -357,7 +373,6 @@
     </div>
   </div>
 
-  <!-- Edit Profile Section -->
   <div class="section" id="editProfileSection">
     <div class="header">
       <i class="fas fa-arrow-left back-btn" onclick="window.showGroupSection()"></i>
@@ -379,7 +394,6 @@
     </div>
   </div>
 
-  <!-- Main Groups List -->
   <div class="section" id="groupSection" style="padding-bottom: 80px;">
     <div class="header">
       <div class="spacer"></div>
@@ -431,7 +445,6 @@
     </div>
   </div>
 
-  <!-- Activity Tab -->
   <div class="section" id="activitySection" style="padding-bottom: 80px;">
     <div class="header">
       <div class="spacer"></div>
@@ -441,7 +454,6 @@
       </button>
     </div>
     
-    <!-- Multi Select Action Bar for Activities -->
     <div id="activityDeleteActions" class="hidden" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
        <div style="display:flex; align-items:center; gap:8px;">
            <input type="checkbox" id="selectAllActivities" onchange="window.toggleSelectAllActivities(this)">
@@ -474,7 +486,6 @@
     </div>
   </div>
 
-  <!-- Add New Group -->
   <div class="section" id="addGroupSection">
     <div class="header">
       <i class="fas fa-arrow-left back-btn" onclick="window.showGroupSection()"></i>
@@ -500,7 +511,6 @@
     </div>
   </div>
 
-  <!-- Group Expenses Section -->
   <div class="section" id="expensesSection">
     <div class="header" style="align-items: flex-start;">
         <i class="fas fa-arrow-left back-btn" onclick="window.showGroupSectionFromExpenses()"></i>
@@ -534,7 +544,6 @@
     </div>
   </div>
 
-  <!-- Add Expense -->
   <div class="section" id="addExpensePage">
     <div class="header">
       <i class="fas fa-arrow-left back-btn" onclick="window.closeAddExpensePage()"></i>
@@ -577,7 +586,6 @@
     </div>
   </div>
 
-  <!-- Edit Expense -->
   <div class="section" id="editExpensePage">
     <div class="header">
       <i class="fas fa-arrow-left back-btn" onclick="window.cancelEditExpense()"></i>
@@ -620,7 +628,6 @@
     </div>
   </div>
 
-  <!-- Select Payer Page -->
   <div class="section" id="selectPayerPage">
       <div class="header">
         <i class="fas fa-arrow-left back-btn" onclick="window.goBackFromPayerSelection()"></i>
@@ -630,7 +637,6 @@
       <div class="content-container" id="payerListContainer"></div>
   </div>
 
-  <!-- Expense Detail Page -->
   <div class="section" id="expenseDetailPage">
     <div class="header">
         <i class="fas fa-arrow-left back-btn" onclick="window.closeExpenseDetailPage()"></i>
@@ -649,7 +655,6 @@
     </div>
   </div>
 
-  <!-- Adjust Split Page -->
   <div class="section" id="adjustSplitPage">
     <div class="header">
       <i class="fas fa-arrow-left back-btn" onclick="window.goBackFromAdjustSplit()"></i>
@@ -719,7 +724,6 @@
     </div>
   </div>
 
-  <!-- Two Member Split Shortcut Page -->
   <div class="section" id="twoMemberSplitPage">
     <div class="header">
         <i class="fas fa-arrow-left back-btn" onclick="window.goBackFromTwoMemberSplit()"></i>
@@ -731,7 +735,6 @@
     </div>
   </div>
 
-  <!-- Group Info Modal -->
   <div class="modal-overlay" id="groupInfoModalOverlay">
     <div class="group-info-modal">
       <h2 id="groupInfoModalTitle" style="margin-top: 0;"></h2>
@@ -741,7 +744,6 @@
     </div>
   </div>
 
-  <!-- Profile Menu Modal -->
   <div class="modal-overlay" id="profileMenuModalOverlay">
     <div class="profile-menu-modal">
         <div style="padding: 16px; font-size: 16px; font-weight: 500; cursor: pointer; border-bottom: 1px solid var(--border-light);" onclick="window.openEditProfile()">Edit Profile</div>
@@ -750,7 +752,6 @@
     </div>
   </div>
 
-  <!-- Activity Detail Modal -->
   <div class="modal-overlay" id="activityDetailModalOverlay">
     <div class="activity-detail-modal">
       <h2 style="margin-top: 0; text-align: center; font-size: 18px;">Edit Details</h2>
@@ -759,7 +760,6 @@
     </div>
   </div>
 
-  <!-- Custom Input Modal -->
   <div class="confirm-modal-overlay" id="customInputModalOverlay">
     <div class="confirm-modal-content">
       <p id="customModalMessage" style="font-weight: 600; margin-bottom: 16px;"></p>
@@ -771,7 +771,6 @@
     </div>
   </div>
 
-  <!-- Confirmation Modal -->
   <div class="confirm-modal-overlay" id="confirmModalOverlay">
     <div class="confirm-modal-content">
       <p id="confirmModalMessage" style="font-weight: 500; margin-bottom: 24px;"></p>
@@ -782,10 +781,7 @@
     </div>
   </div>
 
-</div> <!-- End of #appContainer -->
-
-<!-- Firebase SDK Imports -->
-<script type="module">
+</div> <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
