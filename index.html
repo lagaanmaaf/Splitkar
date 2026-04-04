@@ -88,180 +88,77 @@
     }
 
     /* Start Screen Specific */
-    #loginSection {
-      padding: 0;
-    }
+    #loginSection { padding: 0; }
     .splash-logo {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      object-fit: cover;
-      z-index: 0;
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0;
     }
     .splash-content {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      height: 100%;
-      padding: 32px 24px 48px 24px;
-      background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 60%);
+      position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: flex-end;
+      height: 100%; padding: 32px 24px 48px 24px; background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 60%);
     }
 
     /* =========================================
        HEADERS & TYPOGRAPHY
        ========================================= */
     .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-      margin-bottom: 24px;
-      flex-shrink: 0;
+      display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 24px; flex-shrink: 0;
     }
-
-    h1, .group-title {
-      text-align: center;
-      color: var(--text-main);
-      font-size: 22px;
-      font-weight: 700;
-      margin: 0;
-      flex-grow: 1;
-    }
-
-    .back-btn {
-      font-size: 20px;
-      color: var(--primary);
-      cursor: pointer;
-      padding: 8px;
-      margin-left: -8px; 
-      transition: opacity 0.2s;
-    }
+    h1, .group-title { text-align: center; color: var(--text-main); font-size: 22px; font-weight: 700; margin: 0; flex-grow: 1; }
+    .back-btn { font-size: 20px; color: var(--primary); cursor: pointer; padding: 8px; margin-left: -8px; transition: opacity 0.2s; }
     .back-btn:hover { opacity: 0.7; }
-    
     .spacer { width: 36px; } 
 
     /* =========================================
        LAYOUT CONTAINERS
        ========================================= */
-    .content-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      overflow-y: auto;
-      gap: 20px;
-      padding-bottom: 20px;
-    }
+    .content-container { flex: 1; display: flex; flex-direction: column; width: 100%; overflow-y: auto; gap: 20px; padding-bottom: 20px; }
 
     /* =========================================
        BUTTONS
        ========================================= */
     button { font-family: 'Poppins', sans-serif; }
     .login-button, .next-button, .done-btn, .add-group-btn, .settle-up-btn, .add-expense-btn {
-      width: 100%;
-      padding: 16px;
-      font-size: 16px;
-      font-weight: 600;
-      background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-      color: white;
-      border: none;
-      border-radius: var(--radius-md);
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      box-shadow: 0 8px 20px rgba(56, 178, 172, 0.25);
+      width: 100%; padding: 16px; font-size: 16px; font-weight: 600;
+      background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: white;
+      border: none; border-radius: var(--radius-md); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+      display: flex; justify-content: center; align-items: center; gap: 10px; box-shadow: 0 8px 20px rgba(56, 178, 172, 0.25);
     }
     .login-button:hover, .next-button:hover, .done-btn:hover, .add-group-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 25px rgba(56, 178, 172, 0.35);
+      transform: translateY(-2px); box-shadow: 0 10px 25px rgba(56, 178, 172, 0.35);
     }
 
     .cancel-btn, .cancel-delete-btn {
-      width: 100%;
-      padding: 16px;
-      font-size: 16px;
-      font-weight: 600;
-      background-color: var(--bg-soft);
-      color: var(--text-muted);
-      border: 1px solid var(--border-light);
-      border-radius: var(--radius-md);
-      cursor: pointer;
-      transition: all 0.2s;
+      width: 100%; padding: 16px; font-size: 16px; font-weight: 600;
+      background-color: var(--bg-soft); color: var(--text-muted); border: 1px solid var(--border-light);
+      border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s;
     }
     .cancel-btn:hover { background-color: var(--border-light); }
-
     .remove-group-btn, .delete-selected-btn {
-      width: 100%;
-      padding: 16px;
-      font-size: 16px;
-      font-weight: 600;
-      background-color: var(--secondary);
-      color: white;
-      border: none;
-      border-radius: var(--radius-md);
-      cursor: pointer;
+      width: 100%; padding: 16px; font-size: 16px; font-weight: 600;
+      background-color: var(--secondary); color: white; border: none; border-radius: var(--radius-md); cursor: pointer;
     }
-
     .button-container {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      width: 100%;
-      margin-top: auto;
-      padding-top: 16px;
-      background: var(--bg-surface);
-      flex-shrink: 0;
-      z-index: 10;
+      display: flex; justify-content: space-between; gap: 12px; width: 100%; margin-top: auto; padding-top: 16px; background: var(--bg-surface); flex-shrink: 0; z-index: 10;
     }
 
     /* =========================================
        INPUTS & FORMS
        ========================================= */
-    label {
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-      font-weight: 500;
-      display: block;
+    label { font-size: 14px; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; display: block; }
+    input[type="text"], input[type="tel"], input[type="password"], input[type="number"], select {
+      width: 100%; padding: 16px; font-size: 15px; border-radius: var(--radius-md); border: 1px solid var(--border-light);
+      background-color: var(--bg-soft); color: var(--text-main); box-sizing: border-box; transition: all 0.3s ease; font-family: 'Poppins', sans-serif;
     }
-
-    input[type="text"], input[type="tel"], input[type="number"], select {
-      width: 100%;
-      padding: 16px;
-      font-size: 15px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border-light);
-      background-color: var(--bg-soft);
-      color: var(--text-main);
-      box-sizing: border-box;
-      transition: all 0.3s ease;
-      font-family: 'Poppins', sans-serif;
+    input[type="text"]:focus, input[type="number"]:focus, input[type="tel"]:focus, input[type="password"]:focus, select:focus {
+      border-color: var(--primary); background-color: var(--bg-surface); box-shadow: 0 0 0 4px var(--primary-light);
     }
-    input[type="text"]:focus, input[type="number"]:focus, input[type="tel"]:focus, select:focus {
-      border-color: var(--primary);
-      background-color: var(--bg-surface);
-      box-shadow: 0 0 0 4px var(--primary-light);
-    }
-
     .search-container { position: relative; width: 100%; margin-bottom: 10px; }
     .search-icon { position: absolute; top: 50%; left: 16px; transform: translateY(-50%); color: var(--text-muted); }
     .search-input { padding-left: 45px !important; border-radius: 50px !important; }
 
-    /* Contenteditable pseudo-inputs */
     .group-name-line {
-      flex: 1;
-      font-size: 18px;
-      font-weight: 500;
-      color: var(--text-main);
-      border-bottom: 2px solid var(--border-light);
-      padding: 8px 0;
-      min-height: 28px;
-      transition: border-color 0.3s;
+      flex: 1; font-size: 18px; font-weight: 500; color: var(--text-main); border-bottom: 2px solid var(--border-light);
+      padding: 8px 0; min-height: 28px; transition: border-color 0.3s;
     }
     .group-name-line:focus { border-bottom-color: var(--primary); }
     .group-name-line:empty::before { content: attr(data-placeholder); color: var(--text-muted); }
@@ -269,44 +166,19 @@
     /* =========================================
        LISTS & ITEMS
        ========================================= */
-    .group-display-container, .expenses-list-wrapper {
-      flex: 1; display: flex; flex-direction: column; width: 100%; overflow-y: auto; padding-bottom: 60px;
-    }
-
-    .no-groups, .no-expenses-message {
-      color: var(--text-muted); text-align: center; margin: auto; font-size: 16px; padding: 20px;
-    }
-
-    .group-list, .expenses-list {
-      display: flex; flex-direction: column; gap: 12px; width: 100%;
-    }
+    .group-display-container, .expenses-list-wrapper { flex: 1; display: flex; flex-direction: column; width: 100%; overflow-y: auto; padding-bottom: 60px; }
+    .no-groups, .no-expenses-message { color: var(--text-muted); text-align: center; margin: auto; font-size: 16px; padding: 20px; }
+    .group-list, .expenses-list { display: flex; flex-direction: column; gap: 12px; width: 100%; }
 
     .group-item, .expense-item, .split-option-box, .split-payer-info, .two-member-split-list-item, .expense-detail-share-item {
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-light);
-      border-radius: var(--radius-sm);
-      padding: 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      background-color: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-sm);
+      padding: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
     }
-    .group-item:hover, .expense-item:hover, .split-option-box:hover, .two-member-split-list-item:hover {
-      transform: translateY(-2px); box-shadow: var(--shadow-sm); border-color: var(--primary);
-    }
-
-    .group-item-logo, .expense-item-icon {
-      width: 48px; height: 48px; border-radius: var(--radius-sm);
-      background-color: var(--bg-soft); display: flex; justify-content: center; align-items: center; flex-shrink: 0;
-    }
+    .group-item:hover, .expense-item:hover, .split-option-box:hover, .two-member-split-list-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); border-color: var(--primary); }
+    .group-item-logo, .expense-item-icon { width: 48px; height: 48px; border-radius: var(--radius-sm); background-color: var(--bg-soft); display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
     .group-item-logo img, .expense-item-icon img { width: 60%; height: 60%; object-fit: contain; }
 
-    .group-name-text, .expense-title {
-      font-size: 16px; font-weight: 600; color: var(--text-main); flex-grow: 1;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    
+    .group-name-text, .expense-title { font-size: 16px; font-weight: 600; color: var(--text-main); flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .expense-info-wrapper { display: flex; align-items: center; gap: 12px; flex-grow: 1; overflow: hidden; }
     .expense-details-text { display: flex; flex-direction: column; overflow: hidden; }
     .expense-info { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -319,27 +191,14 @@
        NAVIGATION BAR
        ========================================= */
     .nav-bar {
-      width: 100%;
-      display: flex;
-      justify-content: space-around;
-      padding: 16px 0 16px 0;
-      border-top: 1px solid var(--border-light);
-      background: var(--bg-surface);
-      position: absolute;
-      bottom: 0; left: 0;
-      z-index: 100;
+      width: 100%; display: flex; justify-content: space-around; padding: 16px 0 16px 0; border-top: 1px solid var(--border-light);
+      background: var(--bg-surface); position: absolute; bottom: 0; left: 0; z-index: 100;
     }
-    .nav-item {
-      display: flex; flex-direction: column; align-items: center; cursor: pointer; color: var(--text-muted); transition: color 0.3s;
-    }
+    .nav-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; color: var(--text-muted); transition: color 0.3s; }
     .nav-item:hover, .nav-item.active { color: var(--primary); }
     .nav-icon { font-size: 20px; margin-bottom: 4px; }
     .nav-text { font-size: 12px; font-weight: 500; }
-    
-    .dp-icon {
-      width: 24px; height: 24px; border-radius: 50%; background-color: var(--primary);
-      color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
-    }
+    .dp-icon { width: 24px; height: 24px; border-radius: 50%; background-color: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
 
     /* =========================================
        EXPENSE SPECIFICS & SPLITS
@@ -348,10 +207,7 @@
     .expenses-group-name { font-size: 22px; margin-bottom: 4px; }
     .group-balance-summary { font-size: 13px; color: var(--text-muted); }
     
-    .header-action-btn {
-      width: 40px; height: 40px; border-radius: 50%; background: var(--bg-soft); border: 1px solid var(--border-light);
-      display: flex; justify-content: center; align-items: center; color: var(--text-main); cursor: pointer; transition: all 0.2s;
-    }
+    .header-action-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--bg-soft); border: 1px solid var(--border-light); display: flex; justify-content: center; align-items: center; color: var(--text-main); cursor: pointer; transition: all 0.2s; }
     .header-action-btn:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary-light); }
 
     .expense-split-options-container { display: flex; gap: 12px; width: 100%; }
@@ -370,41 +226,28 @@
     /* =========================================
        MODALS & OVERLAYS
        ========================================= */
-    /* Modals should be absolute to stay inside the #appContainer boundaries */
     .modal-overlay, .confirm-modal-overlay {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(45, 55, 72, 0.4); backdrop-filter: blur(4px);
-      display: none; justify-content: center; align-items: center; z-index: 1000;
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(45, 55, 72, 0.4); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 1000;
     }
-    .group-info-modal, .confirm-modal-content, .profile-menu-modal {
-      background: var(--bg-surface); padding: 32px; border-radius: var(--radius-lg);
-      width: 90%; max-width: 400px; text-align: center; box-shadow: var(--shadow-lg);
+    .group-info-modal, .confirm-modal-content {
+      background: var(--bg-surface); padding: 32px; border-radius: var(--radius-lg); width: 90%; max-width: 400px; text-align: center; box-shadow: var(--shadow-lg);
+    }
+    .profile-menu-modal {
+      background: var(--bg-surface); width: 100%;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0; position: absolute; bottom: 0; left: 0;
+      box-sizing: border-box; padding: 24px 24px 40px 24px; box-shadow: var(--shadow-lg);
     }
     .confirm-modal-buttons { display: flex; gap: 12px; margin-top: 24px; }
     .confirm-modal-btn { flex: 1; }
 
     input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--primary); cursor: pointer; border-radius: 6px; }
-
     .hidden { display: none !important; }
-    .add-members-label { color: var(--primary); font-size: 14px; font-weight: 600; cursor: pointer; display: block; margin-top: 10px; }
     .expense-input-group { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
-    
     .two-member-split-list-item.active { border-color: var(--primary); background-color: var(--primary-light); }
-    
     .expense-detail-share-item { flex-direction: row; justify-content: space-between; border: none; border-bottom: 1px solid var(--border-light); border-radius: 0; padding: 12px 0; background: transparent; }
     .expense-detail-share-item:last-child { border-bottom: none; }
     .expense-detail-amount { font-size: 32px; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 24px;}
-    
-    .group-code-pill {
-      display: inline-block;
-      background: var(--primary-light);
-      color: var(--primary-hover);
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-top: 8px;
-    }
+    .group-code-pill { display: inline-block; background: var(--primary-light); color: var(--primary-hover); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -416,29 +259,52 @@
     <img src="https://i.ibb.co/DPyvXJh0/Chat-GPT-Image-Apr-4-2026-01-22-40-PM.png" class="splash-logo" alt="Split Kar Logo"
     onerror="this.onerror=null; this.src='https://placehold.co/400x800/38B2AC/ffffff?text=Split+Kar';">
     <div class="splash-content">
-      <h1 style="color: white; margin-bottom: 8px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Split Kar</h1>
-      <p style="color: #E2E8F0; margin-bottom: 32px; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">Share expenses with friends easily.</p>
-      <button class="login-button" onclick="showProfileSection()">Get Started</button>
+      <button class="login-button" onclick="showAuthSection()">Get Started</button>
     </div>
   </div>
 
-  <!-- Profile Creation -->
-  <div class="section" id="profileSection">
+  <!-- Auth Section (Login & Signup) -->
+  <div class="section" id="authSection">
     <div class="header">
-      <h1 class="group-title">Complete Profile</h1>
+      <i class="fas fa-arrow-left back-btn" onclick="showLoginSection()"></i>
+      <h1 class="group-title">Account</h1>
+      <div class="spacer"></div>
     </div>
-    <div class="content-container" style="justify-content: center;">
+    
+    <div class="split-tabs-container" style="margin-bottom: 24px;">
+        <div class="split-tab active" id="tabLogin" onclick="switchAuthTab('login')">Login</div>
+        <div class="split-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign Up</div>
+        <div class="split-tab-indicator" id="authTabIndicator" style="width:50%; transform: translateX(0);"></div>
+    </div>
+
+    <!-- Login Form -->
+    <div class="content-container" id="loginForm">
         <div style="margin-bottom: 16px;">
-            <label for="name">Your Name</label>
-            <input type="text" id="name" placeholder="Enter your full name">
+            <label>Phone Number</label>
+            <input type="tel" id="loginPhone" placeholder="Enter your mobile number">
         </div>
-        <div>
-            <label for="phone">Phone Number</label>
-            <input type="tel" id="phone" placeholder="Enter your mobile number">
+        <div style="margin-bottom: 16px;">
+            <label>Password</label>
+            <input type="password" id="loginPassword" placeholder="Enter password">
         </div>
+        <button class="next-button" onclick="handleLogin()" style="margin-top: 10px;">Login</button>
     </div>
-    <div class="button-container">
-        <button class="next-button" onclick="createAccount()">Create Account</button>
+
+    <!-- Signup Form -->
+    <div class="content-container hidden" id="signupForm">
+        <div style="margin-bottom: 16px;">
+            <label>Your Name</label>
+            <input type="text" id="signupName" placeholder="Enter your full name">
+        </div>
+        <div style="margin-bottom: 16px;">
+            <label>Phone Number</label>
+            <input type="tel" id="signupPhone" placeholder="Enter your mobile number">
+        </div>
+        <div style="margin-bottom: 16px;">
+            <label>Password</label>
+            <input type="password" id="signupPassword" placeholder="Create a password">
+        </div>
+        <button class="next-button" onclick="handleSignup()" style="margin-top: 10px;">Sign Up</button>
     </div>
   </div>
 
@@ -456,7 +322,7 @@
         <input type="text" class="search-input" placeholder="Search groups..." id="searchInput"/>
       </div>
       <div class="group-display-container">
-        <div class="no-groups">No groups yet. Let's create one!</div>
+        <div class="no-groups">No groups yet. Join one or create your own!</div>
         <div class="group-list hidden" id="myGroupList"></div>
       </div>
     </div>
@@ -533,34 +399,14 @@
         </div>
         <div class="group-name-line" contenteditable="true" id="groupNameLine" data-placeholder="Enter Group Name..."></div>
       </div>
-      <span class="add-members-label" onclick="showAddMembersPage('addGroupSection')">+ Add Group Members</span>
+      <div style="font-size: 13px; color: var(--text-muted); margin-top: 10px;">
+        Groups are created initially with just you. Share your group code to let others join.
+      </div>
     </div>
 
     <div class="button-container">
       <button class="cancel-btn" onclick="showGroupSection()">Cancel</button>
       <button class="done-btn" id="doneBtn">Create Group</button>
-    </div>
-  </div>
-
-  <!-- Add Members Page -->
-  <div class="section" id="addMembersPage">
-    <div class="header">
-      <i class="fas fa-arrow-left back-btn" id="backFromAddMembers"></i>
-      <h1 class="group-title">Add Members</h1>
-      <div class="spacer"></div>
-    </div>
-
-    <div class="content-container">
-        <div style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
-            <label for="memberCountSelect">Number of additional Members</label>
-            <select id="memberCountSelect"></select>
-        </div>
-        <div id="memberInputsContainer" style="display:flex; flex-direction:column; gap:16px; margin-top: 10px;"></div>
-    </div>
-
-    <div class="button-container">
-      <button class="cancel-btn" id="cancelAddMembersBtn">Cancel</button>
-      <button class="done-btn" id="doneAddMembersBtn">Done</button>
     </div>
   </div>
 
@@ -575,10 +421,7 @@
         </div>
 
         <div style="display:flex; gap: 8px;">
-            <button class="header-action-btn" onclick="showAddMembersPage('expensesSection')">
-                <i class="fas fa-user-plus"></i>
-            </button>
-            <button class="header-action-btn" onclick="showGroupInfo()">
+            <button class="header-action-btn" onclick="showGroupInfo()" title="Group Info & Code">
                 <i class="fas fa-info"></i>
             </button>
         </div>
@@ -810,9 +653,10 @@
 
   <!-- Profile Menu Modal -->
   <div class="modal-overlay" id="profileMenuModalOverlay">
-    <div class="profile-menu-modal" style="padding: 16px;">
+    <div class="profile-menu-modal">
         <div style="padding: 16px; font-size: 16px; font-weight: 500; cursor: pointer; border-bottom: 1px solid var(--border-light);" onclick="renameProfile()">Rename Profile</div>
-        <div style="padding: 16px; font-size: 16px; font-weight: 500; color: var(--secondary); cursor: pointer;" onclick="logoutUser()">Logout</div>
+        <div style="padding: 16px; font-size: 16px; font-weight: 500; color: var(--secondary); cursor: pointer; border-bottom: 1px solid var(--border-light);" onclick="logoutUser()">Logout</div>
+        <div style="padding: 16px; font-size: 16px; font-weight: 500; color: var(--secondary); cursor: pointer;" onclick="deleteAccount()">Delete Account</div>
     </div>
   </div>
 
@@ -845,7 +689,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // Standard Firebase Config initialization with fallback to user's specified DB for offline/external use.
     const fallbackConfig = {
@@ -875,7 +719,8 @@
 
     let isInitialized = false;
 
-    // Authentication Setup
+    // Authentication Setup 
+    // We authenticate with Firebase automatically, but user identity is stored in custom "users" collection
     const initAuth = async () => {
         try {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -883,17 +728,28 @@
             } else {
                 await signInAnonymously(auth);
             }
-        } catch (e) { console.error("Auth error", e); }
-    };
 
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            setupListeners();
-            checkExistingUser();
-        } else {
+            // Once Firebase connects, check App-Level Auth locally
+            const savedPhone = localStorage.getItem('splitkar_logged_in_phone');
+            if(savedPhone) {
+                const userDocSnap = await getDoc(doc(publicCollection('users'), savedPhone));
+                if (userDocSnap.exists()) {
+                    window.appState.user = userDocSnap.data();
+                    updateProfileDP(window.appState.user);
+                    setupListeners();
+                    showGroupSection();
+                } else {
+                    localStorage.removeItem('splitkar_logged_in_phone');
+                    showLoginSection();
+                }
+            } else {
+                showLoginSection();
+            }
+        } catch (e) { 
+            console.error("Auth error", e); 
             showLoginSection();
         }
-    });
+    };
 
     function setupListeners() {
         if (isInitialized) return;
@@ -901,10 +757,12 @@
 
         onSnapshot(publicCollection('users'), (snapshot) => {
             const users = snapshot.docs.map(d => d.data());
-            const me = users.find(u => u.id === auth.currentUser.uid);
-            if (me) {
-                window.appState.user = me;
-                updateProfileDP(me);
+            if(window.appState.user) {
+                const me = users.find(u => u.phone === window.appState.user.phone);
+                if (me) {
+                    window.appState.user = me;
+                    updateProfileDP(me);
+                }
             }
         }, (err) => console.error(err));
 
@@ -927,52 +785,98 @@
         }, (err) => console.error(err));
     }
 
-    async function checkExistingUser() {
-        // Initially show a loading/splash until groups load, but we rely on local appState
-        // We will default to login if no user found in local state after a brief delay
-        setTimeout(() => {
-            if (window.appState.user) {
-                showGroupSection();
-            } else {
-                showLoginSection();
-            }
-        }, 1000);
-    }
+    // App-Level Authentication Functions
+    window.handleSignup = async () => {
+        const name = document.getElementById('signupName').value.trim();
+        const phone = document.getElementById('signupPhone').value.trim();
+        const password = document.getElementById('signupPassword').value;
 
-    // Connect Firebase functionality to global scope so existing UI functions work
-    window.createAccount = async () => {
-        const name = document.getElementById('name').value.trim();
-        const phone = document.getElementById('phone').value.trim();
-        if (!name || !phone) {
-            window.showCustomAlert("Please enter both your name and phone number.");
-            return;
+        if (!name || !phone || !password) {
+            window.showCustomAlert("Please fill all fields."); return;
         }
 
-        const userDoc = {
-            id: auth.currentUser.uid,
+        const userRef = doc(publicCollection('users'), phone);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+            window.showCustomAlert("User Already Exist"); return;
+        }
+
+        const newUser = {
+            id: phone, 
             name: name,
             phone: phone,
+            password: password, 
             initials: window.getInitials(name).toUpperCase(),
             bgColor: window.getRandomColor()
         };
 
         try {
-            await setDoc(doc(publicCollection('users'), auth.currentUser.uid), userDoc);
-            window.appState.user = userDoc;
-            updateProfileDP(userDoc);
+            await setDoc(userRef, newUser);
+            localStorage.setItem('splitkar_logged_in_phone', phone);
+            window.appState.user = newUser;
+            updateProfileDP(newUser);
+            setupListeners();
             showGroupSection();
         } catch (e) {
             window.showCustomAlert("Error creating account.");
         }
     };
 
-    window.getGroups = () => {
-        return JSON.parse(JSON.stringify(window.appState.groups));
+    window.handleLogin = async () => {
+        const phone = document.getElementById('loginPhone').value.trim();
+        const password = document.getElementById('loginPassword').value;
+
+        if (!phone || !password) {
+            window.showCustomAlert("Please fill all fields."); return;
+        }
+
+        const userRef = doc(publicCollection('users'), phone);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+            const userData = userSnap.data();
+            if (userData.password === password) {
+                localStorage.setItem('splitkar_logged_in_phone', phone);
+                window.appState.user = userData;
+                updateProfileDP(userData);
+                setupListeners();
+                showGroupSection();
+            } else {
+                window.showCustomAlert("Incorrect Password");
+            }
+        } else {
+            window.showCustomAlert("User does not exist");
+        }
     };
 
+    window.deleteAccount = async () => {
+        const confirmDel = await window.showConfirmModal('Are you sure you want to permanently delete your account? This action cannot be undone.');
+        if(confirmDel) {
+            if(window.appState.user) {
+                await deleteDoc(doc(publicCollection('users'), window.appState.user.phone));
+            }
+            localStorage.removeItem('splitkar_logged_in_phone');
+            window.appState.user = null;
+            document.getElementById('profileMenuModalOverlay').style.display = 'none';
+            showLoginSection();
+        }
+    };
+
+    window.logoutUser = async () => {
+        const confirmLogout = await window.showConfirmModal('Are you sure you want to log out?');
+        if (confirmLogout) {
+            localStorage.removeItem('splitkar_logged_in_phone');
+            window.appState.user = null;
+            showLoginSection();
+        }
+        document.getElementById('profileMenuModalOverlay').style.display = 'none';
+    };
+
+
+    window.getGroups = () => { return JSON.parse(JSON.stringify(window.appState.groups)); };
+
     window.saveGroups = async (groupsArray) => {
-        // Helper to update all groups if a bulk action is taken
-        // Usually it's better to update one at a time, but to mimic the original logic:
         for(let g of groupsArray) {
             await setDoc(doc(publicCollection('groups'), g.id), g);
         }
@@ -985,12 +889,8 @@
     window.logActivity = async (groupId, groupName, text) => {
         const activityId = window.generateUUID();
         const activity = {
-            id: activityId,
-            groupId: groupId,
-            groupName: groupName,
-            text: text,
-            timestamp: new Date().toISOString(),
-            user: window.appState.user ? window.appState.user.name : "Unknown"
+            id: activityId, groupId: groupId, groupName: groupName, text: text,
+            timestamp: new Date().toISOString(), user: window.appState.user ? window.appState.user.name : "Unknown"
         };
         await setDoc(doc(publicCollection('activities'), activityId), activity);
     };
@@ -1022,7 +922,7 @@
         const newName = await window.showCustomInputModal(`Enter new name for "${oldName}":`, oldName);
         if (newName !== null && newName.trim() !== "" && newName.trim().toLowerCase() !== oldName.toLowerCase()) {
             const updatedUser = { ...window.appState.user, name: newName.trim(), initials: window.getInitials(newName.trim()).toUpperCase() };
-            await setDoc(doc(publicCollection('users'), auth.currentUser.uid), updatedUser);
+            await setDoc(doc(publicCollection('users'), window.appState.user.phone), updatedUser);
             
             // Also update names in groups
             let groups = window.getGroups();
@@ -1055,15 +955,6 @@
             updateProfileDP(updatedUser);
         } else if (newName !== null && newName.trim() === "") {
             window.showCustomAlert('Name cannot be empty.');
-        }
-        document.getElementById('profileMenuModalOverlay').style.display = 'none';
-    };
-
-    window.logoutUser = async () => {
-        const confirmLogout = await window.showConfirmModal('Are you sure you want to log out?');
-        if (confirmLogout) {
-            window.appState.user = null;
-            showLoginSection();
         }
         document.getElementById('profileMenuModalOverlay').style.display = 'none';
     };
@@ -1103,9 +994,6 @@
     let isDeleteModeActive = false;
     let currentExpenseSplitDetails = { payer: '', splitType: 'equally', shares: {}, percentages: {} };
     let previousPageId = null; 
-    let newGroupMembers = [];
-    let addMembersFromPage = null;
-    let currentGroupMembersForAddMembersPage = []; 
     let activeExpensePage = null;
     let currentExpenseDetailId = null;
     let currentEditingExpenseId = null;
@@ -1126,19 +1014,9 @@
             const confirmButton = document.getElementById('customModalConfirm');
             const cancelButton = document.getElementById('customModalCancel');
 
-            const handleConfirmClick = () => {
-                resolve(inputField.value);
-                cleanup();
-            };
-
-            const handleCancelClick = () => {
-                resolve(null);
-                cleanup();
-            };
-            
-            const handleKeyPress = function(event) {
-                if (event.key === 'Enter') handleConfirmClick();
-            };
+            const handleConfirmClick = () => { resolve(inputField.value); cleanup(); };
+            const handleCancelClick = () => { resolve(null); cleanup(); };
+            const handleKeyPress = function(event) { if (event.key === 'Enter') handleConfirmClick(); };
 
             const cleanup = () => {
                 modalOverlay.style.display = 'none';
@@ -1208,8 +1086,34 @@
     }
 
     function showLoginSection() { hideAllSections(); document.getElementById("loginSection").style.display = "flex"; }
-    function showProfileSection() { hideAllSections(); document.getElementById("profileSection").style.display = "flex"; }
+    function showAuthSection() { 
+        hideAllSections(); 
+        document.getElementById("authSection").style.display = "flex"; 
+        switchAuthTab('login');
+    }
     function showGroupSectionFromExpenses() { hideAllSections(); document.getElementById("groupSection").style.display = "flex"; }
+
+    window.switchAuthTab = (tab) => {
+        const loginForm = document.getElementById('loginForm');
+        const signupForm = document.getElementById('signupForm');
+        const tabLogin = document.getElementById('tabLogin');
+        const tabSignup = document.getElementById('tabSignup');
+        const indicator = document.getElementById('authTabIndicator');
+
+        if(tab === 'login') {
+            loginForm.classList.remove('hidden');
+            signupForm.classList.add('hidden');
+            tabLogin.classList.add('active');
+            tabSignup.classList.remove('active');
+            indicator.style.transform = 'translateX(0)';
+        } else {
+            loginForm.classList.add('hidden');
+            signupForm.classList.remove('hidden');
+            tabLogin.classList.remove('active');
+            tabSignup.classList.add('active');
+            indicator.style.transform = 'translateX(100%)';
+        }
+    };
 
     function getInitials(name) {
       const names = name.trim().split(" ");
@@ -1524,7 +1428,6 @@
       hideAllSections();
       document.getElementById("addGroupSection").style.display = "flex";
       document.getElementById("groupNameLine").textContent = '';
-      newGroupMembers = []; 
     }
 
     document.getElementById('doneBtn').addEventListener('click', async () => {
@@ -1532,11 +1435,12 @@
       const groupName = groupNameLine.textContent.trim();
       
       if (!groupName) { showCustomAlert('Please enter a group name.'); return; }
-      if (!window.appState.user) { showCustomAlert("Please complete your profile first."); return; }
+      if (!window.appState.user) { showCustomAlert("Please login first."); return; }
       
       const currentUserName = window.appState.user.name;
-      let finalMembers = [...newGroupMembers];
-      if (!finalMembers.includes(currentUserName)) finalMembers.unshift(currentUserName);
+      
+      // Removed manual add members. Groups start with just the creator.
+      const finalMembers = [currentUserName]; 
 
       const groupCode = String.fromCharCode(65+Math.floor(Math.random()*26)) + String.fromCharCode(65+Math.floor(Math.random()*26)) + Math.floor(10000 + Math.random() * 90000);
 
@@ -1701,104 +1605,6 @@
         window.logActivity(currentGroupId, group.name, `${window.appState.user.name} settled up all expenses.`);
       }
     }
-
-    const memberCountSelect = document.getElementById('memberCountSelect');
-    const memberInputsContainer = document.getElementById('memberInputsContainer');
-    function showAddMembersPage(fromPage) {
-        addMembersFromPage = fromPage;
-        hideAllSections();
-        document.getElementById('addMembersPage').style.display = 'flex';
-        memberCountSelect.innerHTML = '<option value="">Select number...</option>';
-        for (let i = 1; i <= 20; i++) {
-            const option = document.createElement('option'); option.value = i; option.textContent = i;
-            memberCountSelect.appendChild(option);
-        }
-        
-        if (addMembersFromPage === 'addGroupSection') {
-            currentGroupMembersForAddMembersPage = [...newGroupMembers];
-        } else if (addMembersFromPage === 'expensesSection') {
-            const currentGroupId = document.getElementById('expensesSection').dataset.currentGroupId;
-            const groups = window.getGroups();
-            const group = groups.find(g => g.id === currentGroupId);
-            currentGroupMembersForAddMembersPage = group ? [...group.members] : [];
-        }
-        
-        if (currentGroupMembersForAddMembersPage.length > 0) {
-            memberCountSelect.value = currentGroupMembersForAddMembersPage.length;
-            populateMemberInputs(currentGroupMembersForAddMembersPage.length);
-        } else {
-            memberInputsContainer.innerHTML = '';
-        }
-    }
-
-    memberCountSelect.addEventListener('change', (e) => { populateMemberInputs(parseInt(e.target.value, 10)); });
-    
-    function populateMemberInputs(count) {
-        memberInputsContainer.innerHTML = '';
-        if (isNaN(count)) return;
-
-        const currentUser = window.appState.user;
-        const existingMembers = currentGroupMembersForAddMembersPage;
-
-        for (let i = 0; i < count; i++) {
-            const inputGroup = document.createElement('div');
-            inputGroup.style.display = "flex"; inputGroup.style.flexDirection = "column"; inputGroup.style.gap = "8px";
-            
-            const label = document.createElement('label'); label.textContent = `Member ${i + 1} Name`;
-            const input = document.createElement('input'); input.type = 'text'; input.placeholder = `Name for Member ${i + 1}`;
-            
-            if (existingMembers[i]) {
-                input.value = existingMembers[i];
-                if (existingMembers[i] === currentUser.name) input.disabled = true;
-            } else if (i === 0 && !existingMembers.includes(currentUser.name) && addMembersFromPage === 'addGroupSection' && currentUser) {
-                input.value = currentUser.name; input.disabled = true;
-            }
-            inputGroup.appendChild(label); inputGroup.appendChild(input);
-            memberInputsContainer.appendChild(inputGroup);
-        }
-    }
-    
-    document.getElementById('doneAddMembersBtn').addEventListener('click', async () => {
-        const inputs = memberInputsContainer.querySelectorAll('input[type="text"]');
-        const members = Array.from(inputs).map(input => input.value.trim());
-
-        const hasEmptyInputs = Array.from(inputs).some(input => !input.disabled && !input.value.trim());
-        if (hasEmptyInputs) { showCustomAlert('Please fill in all member names.'); return; }
-
-        const filteredMembers = members.filter(name => name); 
-
-        if (addMembersFromPage === 'addGroupSection') {
-            newGroupMembers = filteredMembers; 
-            hideAllSections();
-            document.getElementById('addGroupSection').style.display = 'flex';
-        } else if (addMembersFromPage === 'expensesSection') {
-            const currentGroupId = document.getElementById('expensesSection').dataset.currentGroupId;
-            let groups = window.getGroups();
-            const group = groups.find(g => g.id === currentGroupId);
-            if (group) {
-                const updatedMembers = [...new Set([...group.members, ...filteredMembers])];
-                group.members = updatedMembers;
-                await window.saveGroups([group]);
-                window.logActivity(currentGroupId, group.name, `${window.appState.user.name} added members to the group.`);
-                showExpensesSection(currentGroupId, group.name);
-            }
-        }
-        currentGroupMembersForAddMembersPage = [];
-    });
-
-    document.getElementById('cancelAddMembersBtn').addEventListener('click', () => {
-        hideAllSections();
-        if (addMembersFromPage) document.getElementById(addMembersFromPage).style.display = 'flex';
-        else showGroupSection(); 
-        currentGroupMembersForAddMembersPage = [];
-    });
-    
-    document.getElementById('backFromAddMembers').addEventListener('click', () => {
-        hideAllSections();
-        if (addMembersFromPage) document.getElementById(addMembersFromPage).style.display = 'flex';
-        else showGroupSection();
-        currentGroupMembersForAddMembersPage = []; 
-    });
 
     function closeGroupInfoModal() { document.getElementById('groupInfoModalOverlay').style.display = 'none'; }
 
