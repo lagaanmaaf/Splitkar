@@ -265,31 +265,64 @@
     .expense-detail-amount { font-size: 32px; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 24px;}
     .group-code-pill { display: inline-block; background: var(--primary-light); color: var(--primary-hover); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-top: 8px; }
   </style>
+
+  <script>
+      // SYNCHRONOUS ROUTER SCRIPT
+      // Runs instantly to hide the login screen and show the user's last viewed page without flickering.
+      document.addEventListener('DOMContentLoaded', () => {
+          const savedPhone = localStorage.getItem('splitkar_logged_in_phone');
+          
+          if (savedPhone) {
+              // Get last viewed route, default to groups
+              let route = { id: 'groupSection' };
+              try {
+                  const savedRoute = sessionStorage.getItem('splitkar_route');
+                  if (savedRoute) route = JSON.parse(savedRoute);
+              } catch(e) {}
+              
+              const activeSection = document.getElementById(route.id);
+              if (activeSection) {
+                  activeSection.style.display = 'flex';
+                  // Restore context if they were viewing a specific group's expenses
+                  if (route.id === 'expensesSection') {
+                      activeSection.dataset.currentGroupId = route.groupId || '';
+                      document.getElementById("expensesGroupName").textContent = route.groupName || '';
+                  }
+              } else {
+                  document.getElementById('groupSection').style.display = 'flex';
+              }
+          } else {
+              document.getElementById('loginSection').style.display = 'flex';
+              document.getElementById('getStartedBtn').style.display = 'flex';
+          }
+      });
+  </script>
 </head>
 <body>
 
 <div id="appContainer">
 
   <!-- Splash / Login Screen -->
-  <div class="section" id="loginSection" style="display: flex;">
-    <img src="https://i.ibb.co/DPyvXJh0/Chat-GPT-Image-Apr-4-2026-01-22-40-PM.png" class="splash-logo" alt="Split Kar Logo"
+  <!-- Note: Removed the inline style="display: flex;" so the script above manages it seamlessly -->
+  <div class="section" id="loginSection">
+    <img src="splitkar.png" class="splash-logo" alt="Split Kar Logo"
     onerror="this.onerror=null; this.src='https://placehold.co/400x800/38B2AC/ffffff?text=Split+Kar';">
     <div class="splash-content">
-      <button class="login-button" onclick="showAuthSection()">Get Started</button>
+      <button class="login-button" id="getStartedBtn" style="display: none;" onclick="window.showAuthSection()">Get Started</button>
     </div>
   </div>
 
   <!-- Auth Section (Login & Signup) -->
   <div class="section" id="authSection">
     <div class="header">
-      <i class="fas fa-arrow-left back-btn" onclick="showLoginSection()"></i>
+      <i class="fas fa-arrow-left back-btn" onclick="window.showLoginSection()"></i>
       <h1 class="group-title">Account</h1>
       <div class="spacer"></div>
     </div>
     
     <div class="split-tabs-container" style="margin-bottom: 24px;">
-        <div class="split-tab active" id="tabLogin" onclick="switchAuthTab('login')">Login</div>
-        <div class="split-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign Up</div>
+        <div class="split-tab active" id="tabLogin" onclick="window.switchAuthTab('login')">Login</div>
+        <div class="split-tab" id="tabSignup" onclick="window.switchAuthTab('signup')">Sign Up</div>
         <div class="split-tab-indicator" id="authTabIndicator" style="width:50%; transform: translateX(0);"></div>
     </div>
 
@@ -303,7 +336,7 @@
             <label>Password</label>
             <input type="password" id="loginPassword" placeholder="Enter password">
         </div>
-        <button class="next-button" onclick="handleLogin()" style="margin-top: 10px;">Login</button>
+        <button class="next-button" onclick="window.handleLogin()" style="margin-top: 10px;">Login</button>
     </div>
 
     <!-- Signup Form -->
@@ -320,7 +353,29 @@
             <label>Password</label>
             <input type="password" id="signupPassword" placeholder="Create a password">
         </div>
-        <button class="next-button" onclick="handleSignup()" style="margin-top: 10px;">Sign Up</button>
+        <button class="next-button" onclick="window.handleSignup()" style="margin-top: 10px;">Sign Up</button>
+    </div>
+  </div>
+
+  <!-- Edit Profile Section -->
+  <div class="section" id="editProfileSection">
+    <div class="header">
+      <i class="fas fa-arrow-left back-btn" onclick="window.showGroupSection()"></i>
+      <h1 class="group-title">Edit Profile</h1>
+      <div class="spacer"></div>
+    </div>
+    <div class="content-container">
+        <div style="margin-bottom: 16px;">
+            <label>Your Name</label>
+            <input type="text" id="editProfileName" placeholder="Enter your full name">
+        </div>
+        <div style="margin-bottom: 16px;">
+            <label>Mobile Number</label>
+            <input type="tel" id="editProfilePhone" placeholder="Enter your mobile number">
+        </div>
+    </div>
+    <div class="button-container">
+        <button class="done-btn" onclick="window.saveEditedProfile()">Save Changes</button>
     </div>
   </div>
 
@@ -329,7 +384,9 @@
     <div class="header">
       <div class="spacer"></div>
       <h1 class="group-title">My Groups</h1>
-      <i class="fas fa-user-plus header-action-btn" onclick="showJoinGroupModal()" style="margin-left:auto;" title="Join Group"></i>
+      <button class="header-action-btn" onclick="window.showJoinGroupModal()" style="margin-left:auto; background: none; border: none; box-shadow: none;" title="Join Group">
+        <i class="fas fa-user-plus" style="color: var(--primary);"></i>
+      </button>
     </div>
 
     <div class="content-container">
@@ -345,29 +402,29 @@
 
     <div class="button-container" id="groupButtonContainer" style="padding-bottom: 0;">
         <div id="defaultGroupButtons" style="display:flex; gap:12px; width:100%;">
-             <button class="cancel-btn" id="removeGroupBtn" onclick="toggleDeleteMode()">
+             <button class="cancel-btn" id="removeGroupBtn" onclick="window.toggleDeleteMode()">
                 <i class="fas fa-trash"></i>
             </button>
-            <button class="add-group-btn" id="addGroupBtn" onclick="showAddGroupSection()">
+            <button class="add-group-btn" id="addGroupBtn" onclick="window.showAddGroupSection()">
                 <i class="fas fa-plus"></i> Add Group
             </button>
         </div>
         <div id="deleteModeGroupButtons" class="hidden" style="display:flex; gap:12px; width:100%;">
-            <button class="cancel-btn" id="cancelDeleteBtn" onclick="toggleDeleteMode()">Cancel</button>
-            <button class="delete-selected-btn" id="deleteSelectedBtn" onclick="deleteSelectedGroups()">Delete Selected</button>
+            <button class="cancel-btn" id="cancelDeleteBtn" onclick="window.toggleDeleteMode()">Cancel</button>
+            <button class="delete-selected-btn" id="deleteSelectedBtn" onclick="window.deleteSelectedGroups()">Delete Selected</button>
         </div>
     </div>
 
     <div class="nav-bar">
-      <div class="nav-item active" onclick="switchTab('groups')">
+      <div class="nav-item active" onclick="window.switchTab('groups')">
         <i class="fas fa-users nav-icon"></i>
         <span class="nav-text">Groups</span>
       </div>
-      <div class="nav-item" onclick="switchTab('activity')">
+      <div class="nav-item" onclick="window.switchTab('activity')">
         <i class="fas fa-chart-line nav-icon"></i>
         <span class="nav-text">Activity</span>
       </div>
-      <div class="nav-item" id="profileIcon" onclick="toggleProfileMenu(event)">
+      <div class="nav-item" id="profileIcon" onclick="window.toggleProfileMenu(event)">
         <div class="dp-icon nav-icon" id="profileDP">?</div>
         <span class="nav-text">Profile</span>
       </div>
@@ -377,23 +434,40 @@
   <!-- Activity Tab -->
   <div class="section" id="activitySection" style="padding-bottom: 80px;">
     <div class="header">
-      <h1 class="group-title">Activity Feed</h1>
+      <div class="spacer"></div>
+      <h1 class="group-title" style="padding-left: 36px;">Activity Feed</h1>
+      <button class="header-action-btn" id="activityTrashBtn" onclick="window.toggleActivityDeleteMode()" style="margin-left:auto; background: none; border: none; box-shadow: none;" title="Delete Activity">
+         <i class="fas fa-trash" style="color: var(--text-muted);"></i>
+      </button>
     </div>
-    <div class="content-container">
+    
+    <!-- Multi Select Action Bar for Activities -->
+    <div id="activityDeleteActions" class="hidden" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+       <div style="display:flex; align-items:center; gap:8px;">
+           <input type="checkbox" id="selectAllActivities" onchange="window.toggleSelectAllActivities(this)">
+           <label for="selectAllActivities" style="margin:0;">Select All</label>
+       </div>
+       <div style="display:flex; gap:8px;">
+           <button class="cancel-btn" style="padding: 8px 16px; font-size:14px; width:auto;" onclick="window.toggleActivityDeleteMode()">Cancel</button>
+           <button class="delete-selected-btn" style="padding: 8px 16px; font-size:14px; width:auto;" onclick="window.deleteSelectedActivities()">Delete</button>
+       </div>
+    </div>
+
+    <div class="content-container" style="padding-top: 0;">
         <div class="expenses-list-wrapper">
              <div class="expenses-list" id="activityList"></div>
         </div>
     </div>
     <div class="nav-bar">
-      <div class="nav-item" onclick="switchTab('groups')">
+      <div class="nav-item" onclick="window.switchTab('groups')">
         <i class="fas fa-users nav-icon"></i>
         <span class="nav-text">Groups</span>
       </div>
-      <div class="nav-item active" onclick="switchTab('activity')">
+      <div class="nav-item active" onclick="window.switchTab('activity')">
         <i class="fas fa-chart-line nav-icon"></i>
         <span class="nav-text">Activity</span>
       </div>
-      <div class="nav-item" onclick="toggleProfileMenu(event)">
+      <div class="nav-item" onclick="window.toggleProfileMenu(event)">
         <div class="dp-icon nav-icon" id="profileDP_activity">?</div>
         <span class="nav-text">Profile</span>
       </div>
@@ -403,7 +477,7 @@
   <!-- Add New Group -->
   <div class="section" id="addGroupSection">
     <div class="header">
-      <i class="fas fa-arrow-left back-btn" onclick="showGroupSection()"></i>
+      <i class="fas fa-arrow-left back-btn" onclick="window.showGroupSection()"></i>
       <h1 class="group-title">New Group</h1>
       <div class="spacer"></div>
     </div>
@@ -421,7 +495,7 @@
     </div>
 
     <div class="button-container">
-      <button class="cancel-btn" onclick="showGroupSection()">Cancel</button>
+      <button class="cancel-btn" onclick="window.showGroupSection()">Cancel</button>
       <button class="done-btn" id="doneBtn">Create Group</button>
     </div>
   </div>
@@ -429,7 +503,7 @@
   <!-- Group Expenses Section -->
   <div class="section" id="expensesSection">
     <div class="header" style="align-items: flex-start;">
-        <i class="fas fa-arrow-left back-btn" onclick="showGroupSectionFromExpenses()"></i>
+        <i class="fas fa-arrow-left back-btn" onclick="window.showGroupSectionFromExpenses()"></i>
         
         <div class="expenses-header-main-info">
             <h1 class="expenses-group-name" id="expensesGroupName"></h1>
@@ -437,7 +511,7 @@
         </div>
 
         <div style="display:flex; gap: 8px;">
-            <button class="header-action-btn" onclick="showGroupInfo()" title="Group Info & Code">
+            <button class="header-action-btn" onclick="window.showGroupInfo()" title="Group Info & Code">
                 <i class="fas fa-info"></i>
             </button>
         </div>
@@ -451,10 +525,10 @@
     </div>
 
     <div class="button-container">
-        <button class="cancel-btn" onclick="settleUp()">
+        <button class="cancel-btn" onclick="window.settleUp()">
           <i class="fas fa-handshake"></i> Settle
         </button>
-        <button class="add-expense-btn" onclick="showAddExpensePage()">
+        <button class="add-expense-btn" onclick="window.showAddExpensePage()">
           <i class="fas fa-plus"></i> Expense
         </button>
     </div>
@@ -463,7 +537,7 @@
   <!-- Add Expense -->
   <div class="section" id="addExpensePage">
     <div class="header">
-      <i class="fas fa-arrow-left back-btn" onclick="closeAddExpensePage()"></i>
+      <i class="fas fa-arrow-left back-btn" onclick="window.closeAddExpensePage()"></i>
       <h1 class="group-title">Add Expense</h1>
       <div class="spacer"></div>
     </div>
@@ -480,12 +554,12 @@
       </div>
 
       <div class="expense-split-options-container" id="addExpenseSplitOptionsContainer">
-          <div class="split-option-box" onclick="showPayerSelectionPage()">
+          <div class="split-option-box" onclick="window.showPayerSelectionPage()">
               <span class="split-label">Paid by</span>
               <span class="split-value" id="expensePayerDisplay">You</span>
               <i class="fas fa-chevron-right split-arrow"></i>
           </div>
-          <div class="split-option-box" onclick="showAdjustSplitPage()">
+          <div class="split-option-box" onclick="window.showAdjustSplitPage()">
               <span class="split-label">Split</span>
               <span class="split-value" id="expenseSplitDisplay">Equally</span>
               <i class="fas fa-chevron-right split-arrow"></i>
@@ -498,17 +572,17 @@
     </div>
 
     <div class="button-container">
-      <button class="cancel-btn" onclick="closeAddExpensePage()">Cancel</button>
-      <button class="done-btn" onclick="doneAddExpense()">Save Expense</button>
+      <button class="cancel-btn" onclick="window.closeAddExpensePage()">Cancel</button>
+      <button class="done-btn" onclick="window.doneAddExpense()">Save Expense</button>
     </div>
   </div>
 
   <!-- Edit Expense -->
   <div class="section" id="editExpensePage">
     <div class="header">
-      <i class="fas fa-arrow-left back-btn" onclick="cancelEditExpense()"></i>
+      <i class="fas fa-arrow-left back-btn" onclick="window.cancelEditExpense()"></i>
       <h1 class="group-title">Edit Expense</h1>
-      <i class="fas fa-trash-alt back-btn" style="color: var(--secondary);" onclick="deleteExpenseFromEditPage()"></i>
+      <i class="fas fa-trash-alt back-btn" style="color: var(--secondary);" onclick="window.deleteExpenseFromEditPage()"></i>
     </div>
 
     <div class="content-container">
@@ -523,12 +597,12 @@
       </div>
 
       <div class="expense-split-options-container" id="editExpenseSplitOptionsContainer">
-          <div class="split-option-box" onclick="showPayerSelectionPage()">
+          <div class="split-option-box" onclick="window.showPayerSelectionPage()">
               <span class="split-label">Paid by</span>
               <span class="split-value" id="editExpensePayerDisplay">You</span>
               <i class="fas fa-chevron-right split-arrow"></i>
           </div>
-          <div class="split-option-box" onclick="showAdjustSplitPage()">
+          <div class="split-option-box" onclick="window.showAdjustSplitPage()">
               <span class="split-label">Split</span>
               <span class="split-value" id="editExpenseSplitDisplay">Equally</span>
               <i class="fas fa-chevron-right split-arrow"></i>
@@ -541,15 +615,15 @@
     </div>
 
     <div class="button-container">
-      <button class="cancel-btn" onclick="cancelEditExpense()">Cancel</button>
-      <button class="done-btn" onclick="saveEditedExpense()">Save Changes</button>
+      <button class="cancel-btn" onclick="window.cancelEditExpense()">Cancel</button>
+      <button class="done-btn" onclick="window.saveEditedExpense()">Save Changes</button>
     </div>
   </div>
 
   <!-- Select Payer Page -->
   <div class="section" id="selectPayerPage">
       <div class="header">
-        <i class="fas fa-arrow-left back-btn" onclick="goBackFromPayerSelection()"></i>
+        <i class="fas fa-arrow-left back-btn" onclick="window.goBackFromPayerSelection()"></i>
         <h1 class="group-title">Who Paid?</h1>
         <div class="spacer"></div>
       </div>
@@ -559,11 +633,11 @@
   <!-- Expense Detail Page -->
   <div class="section" id="expenseDetailPage">
     <div class="header">
-        <i class="fas fa-arrow-left back-btn" onclick="closeExpenseDetailPage()"></i>
+        <i class="fas fa-arrow-left back-btn" onclick="window.closeExpenseDetailPage()"></i>
         <h1 class="group-title" id="expenseDetailName"></h1>
         <div style="display:flex; gap:8px;">
-            <button class="header-action-btn" onclick="editExpenseFromDetailPage()"><i class="fas fa-edit"></i></button>
-            <button class="header-action-btn" onclick="deleteExpenseFromDetailPage()"><i class="fas fa-trash-alt" style="color: var(--secondary);"></i></button>
+            <button class="header-action-btn" onclick="window.editExpenseFromDetailPage()"><i class="fas fa-edit"></i></button>
+            <button class="header-action-btn" onclick="window.deleteExpenseFromDetailPage()"><i class="fas fa-trash-alt" style="color: var(--secondary);"></i></button>
         </div>
     </div>
     <div class="content-container">
@@ -578,13 +652,13 @@
   <!-- Adjust Split Page -->
   <div class="section" id="adjustSplitPage">
     <div class="header">
-      <i class="fas fa-arrow-left back-btn" onclick="goBackFromAdjustSplit()"></i>
+      <i class="fas fa-arrow-left back-btn" onclick="window.goBackFromAdjustSplit()"></i>
       <h1 class="group-title">Adjust Split</h1>
       <div class="spacer"></div>
     </div>
 
     <div class="content-container">
-        <div class="split-payer-info" onclick="showPayerSelectionPage()">
+        <div class="split-payer-info" onclick="window.showPayerSelectionPage()">
             <div style="display:flex; flex-direction:column; flex:1;">
                <span class="split-label">Paid by</span>
                <span class="split-value" id="adjustSplitPayerDisplay">You</span>
@@ -641,14 +715,14 @@
     </div>
 
     <div class="button-container">
-      <button class="done-btn" onclick="saveAdjustedSplit()">Confirm Split</button>
+      <button class="done-btn" onclick="window.saveAdjustedSplit()">Confirm Split</button>
     </div>
   </div>
 
   <!-- Two Member Split Shortcut Page -->
   <div class="section" id="twoMemberSplitPage">
     <div class="header">
-        <i class="fas fa-arrow-left back-btn" onclick="goBackFromTwoMemberSplit()"></i>
+        <i class="fas fa-arrow-left back-btn" onclick="window.goBackFromTwoMemberSplit()"></i>
         <h1 class="group-title">Split Details</h1>
         <div class="spacer"></div>
     </div>
@@ -663,16 +737,16 @@
       <h2 id="groupInfoModalTitle" style="margin-top: 0;"></h2>
       <div id="groupCodeDisplay" style="margin-bottom: 16px;"></div>
       <ul style="list-style: none; padding: 0; margin: 0; text-align: left; max-height: 300px; overflow-y: auto;" id="groupInfoModalList"></ul>
-      <button class="cancel-btn" style="margin-top: 24px;" onclick="closeGroupInfoModal()">Close</button>
+      <button class="cancel-btn" style="margin-top: 24px;" onclick="window.closeGroupInfoModal()">Close</button>
     </div>
   </div>
 
   <!-- Profile Menu Modal -->
   <div class="modal-overlay" id="profileMenuModalOverlay">
     <div class="profile-menu-modal">
-        <div style="padding: 16px; font-size: 16px; font-weight: 500; cursor: pointer; border-bottom: 1px solid var(--border-light);" onclick="renameProfile()">Rename Profile</div>
-        <div style="padding: 16px; font-size: 16px; font-weight: 500; color: var(--secondary); cursor: pointer; border-bottom: 1px solid var(--border-light);" onclick="logoutUser()">Logout</div>
-        <div style="padding: 16px; font-size: 16px; font-weight: 500; color: var(--secondary); cursor: pointer;" onclick="deleteAccount()">Delete Account</div>
+        <div style="padding: 16px; font-size: 16px; font-weight: 500; cursor: pointer; border-bottom: 1px solid var(--border-light);" onclick="window.openEditProfile()">Edit Profile</div>
+        <div style="padding: 16px; font-size: 16px; font-weight: 500; color: var(--secondary); cursor: pointer; border-bottom: 1px solid var(--border-light);" onclick="window.logoutUser()">Logout</div>
+        <div style="padding: 16px; font-size: 16px; font-weight: 500; color: var(--secondary); cursor: pointer;" onclick="window.deleteAccount()">Delete Account</div>
     </div>
   </div>
 
@@ -681,7 +755,7 @@
     <div class="activity-detail-modal">
       <h2 style="margin-top: 0; text-align: center; font-size: 18px;">Edit Details</h2>
       <div id="activityDetailContent"></div>
-      <button class="cancel-btn" style="margin-top: 24px;" onclick="closeActivityDetailModal()">Close</button>
+      <button class="cancel-btn" style="margin-top: 24px;" onclick="window.closeActivityDetailModal()">Close</button>
     </div>
   </div>
 
@@ -702,8 +776,8 @@
     <div class="confirm-modal-content">
       <p id="confirmModalMessage" style="font-weight: 500; margin-bottom: 24px;"></p>
       <div class="confirm-modal-buttons">
-        <button class="cancel-btn confirm-modal-btn cancel" onclick="handleConfirm(false)">Cancel</button>
-        <button class="done-btn confirm-modal-btn confirm" style="background:var(--secondary);" onclick="handleConfirm(true)">Confirm</button>
+        <button class="cancel-btn confirm-modal-btn cancel" onclick="window.handleConfirm(false)">Cancel</button>
+        <button class="done-btn confirm-modal-btn confirm" style="background:var(--secondary);" onclick="window.handleConfirm(true)">Confirm</button>
       </div>
     </div>
   </div>
@@ -758,19 +832,25 @@
                 const userDocSnap = await getDoc(doc(publicCollection('users'), savedPhone));
                 if (userDocSnap.exists()) {
                     window.appState.user = userDocSnap.data();
-                    updateProfileDP(window.appState.user);
+                    window.updateProfileDP(window.appState.user);
                     setupListeners();
-                    showGroupSection();
+                    
+                    // We call restoreRoute here to update the data in the synchronously shown section
+                    if (window.restoreRoute) {
+                        window.restoreRoute();
+                    } else {
+                        window.showGroupSection();
+                    }
                 } else {
                     localStorage.removeItem('splitkar_logged_in_phone');
-                    showLoginSection();
+                    window.showLoginSection();
                 }
             } else {
-                showLoginSection();
+                window.showLoginSection();
             }
         } catch (e) { 
             console.error("Auth error", e); 
-            showLoginSection();
+            if(window.showLoginSection) window.showLoginSection();
         }
     };
 
@@ -784,7 +864,7 @@
                 const me = users.find(u => u.phone === window.appState.user.phone);
                 if (me) {
                     window.appState.user = me;
-                    updateProfileDP(me);
+                    window.updateProfileDP(me);
                 }
             }
         }, (err) => console.error(err));
@@ -792,11 +872,11 @@
         onSnapshot(publicCollection('groups'), (snapshot) => {
             window.appState.groups = snapshot.docs.map(d => d.data());
             if (document.getElementById('groupSection').style.display === 'flex') {
-                renderGroups();
+                window.renderGroups();
             }
             if (document.getElementById('expensesSection').style.display === 'flex') {
                 const currentGroupId = document.getElementById('expensesSection').dataset.currentGroupId;
-                if(currentGroupId) renderExpenses(currentGroupId);
+                if(currentGroupId) window.renderExpenses(currentGroupId);
             }
         }, (err) => console.error(err));
 
@@ -838,9 +918,9 @@
             await setDoc(userRef, newUser);
             localStorage.setItem('splitkar_logged_in_phone', phone);
             window.appState.user = newUser;
-            updateProfileDP(newUser);
+            window.updateProfileDP(newUser);
             setupListeners();
-            showGroupSection();
+            window.showGroupSection();
         } catch (e) {
             window.showCustomAlert("Error creating account.");
         }
@@ -862,9 +942,9 @@
             if (userData.password === password) {
                 localStorage.setItem('splitkar_logged_in_phone', phone);
                 window.appState.user = userData;
-                updateProfileDP(userData);
+                window.updateProfileDP(userData);
                 setupListeners();
-                showGroupSection();
+                window.showGroupSection();
             } else {
                 window.showCustomAlert("Incorrect Password");
             }
@@ -880,9 +960,10 @@
                 await deleteDoc(doc(publicCollection('users'), window.appState.user.phone));
             }
             localStorage.removeItem('splitkar_logged_in_phone');
+            sessionStorage.removeItem('splitkar_route');
             window.appState.user = null;
             document.getElementById('profileMenuModalOverlay').style.display = 'none';
-            showLoginSection();
+            window.showLoginSection();
         }
     };
 
@@ -890,12 +971,12 @@
         const confirmLogout = await window.showConfirmModal('Are you sure you want to log out?');
         if (confirmLogout) {
             localStorage.removeItem('splitkar_logged_in_phone');
+            sessionStorage.removeItem('splitkar_route');
             window.appState.user = null;
-            showLoginSection();
+            window.showLoginSection();
         }
         document.getElementById('profileMenuModalOverlay').style.display = 'none';
     };
-
 
     window.getGroups = () => { return JSON.parse(JSON.stringify(window.appState.groups)); };
 
@@ -909,14 +990,39 @@
         await deleteDoc(doc(publicCollection('groups'), groupId));
     };
 
-    window.logActivity = async (groupId, groupName, text, details = null) => {
+    // Updated logActivity to permanently track the users involved so logs persist safely
+    window.logActivity = async (groupId, groupName, text, details = null, involvedUsers = []) => {
         const activityId = window.generateUUID();
         const activity = {
             id: activityId, groupId: groupId, groupName: groupName, text: text,
-            timestamp: new Date().toISOString(), user: window.appState.user ? window.appState.user.name : "Unknown"
+            timestamp: new Date().toISOString(), user: window.appState.user ? window.appState.user.name : "Unknown",
+            involvedUsers: involvedUsers,
+            deletedBy: [] // Array of users who have "deleted" this log from their view
         };
         if (details) activity.details = details;
         await setDoc(doc(publicCollection('activities'), activityId), activity);
+    };
+    
+    // Feature to allow user to multi-delete activity logs
+    window.deleteSelectedActivities = async () => {
+        const checkedBoxes = document.querySelectorAll('.activity-delete-checkbox:checked');
+        if (checkedBoxes.length === 0) { window.showCustomAlert('Select at least one activity to delete.'); return; }
+        
+        const confirmDel = await window.showConfirmModal(`Delete ${checkedBoxes.length} selected activity log(s)?`);
+        if (confirmDel) {
+            for (let cb of checkedBoxes) {
+                const actId = cb.value;
+                const act = window.appState.activities.find(a => a.id === actId);
+                if (act) {
+                    const deletedBy = act.deletedBy || [];
+                    if (!deletedBy.includes(window.appState.user.name)) {
+                        deletedBy.push(window.appState.user.name);
+                        await updateDoc(doc(publicCollection('activities'), actId), { deletedBy: deletedBy });
+                    }
+                }
+            }
+            window.toggleActivityDeleteMode();
+        }
     };
 
     window.showJoinGroupModal = async () => {
@@ -928,9 +1034,9 @@
                 if (!group.members.includes(window.appState.user.name)) {
                     group.members.push(window.appState.user.name);
                     await setDoc(doc(publicCollection('groups'), group.id), group);
-                    window.logActivity(group.id, group.name, `${window.appState.user.name} joined via group code.`);
+                    window.logActivity(group.id, group.name, `${window.appState.user.name} joined via group code.`, null, group.members);
                     window.showCustomAlert("Successfully joined the group!");
-                    showGroupSection();
+                    window.showGroupSection();
                 } else {
                     window.showCustomAlert("You are already in this group.");
                 }
@@ -940,47 +1046,98 @@
         }
     };
 
-    window.renameProfile = async () => {
-        if (!window.appState.user) return;
-        const oldName = window.appState.user.name;
-        const newName = await window.showCustomInputModal(`Enter new name for "${oldName}":`, oldName);
-        if (newName !== null && newName.trim() !== "" && newName.trim().toLowerCase() !== oldName.toLowerCase()) {
-            const updatedUser = { ...window.appState.user, name: newName.trim(), initials: window.getInitials(newName.trim()).toUpperCase() };
-            await setDoc(doc(publicCollection('users'), window.appState.user.phone), updatedUser);
-            
-            // Also update names in groups
-            let groups = window.getGroups();
-            groups.forEach(group => {
-                let changed = false;
-                const memberIndex = group.members.indexOf(oldName);
-                if (memberIndex !== -1) { group.members[memberIndex] = newName.trim(); changed = true; }
-                
-                group.expenses.forEach(expense => {
-                    if (expense.payer === oldName) { expense.payer = newName.trim(); changed = true; }
-                    const expIndex = expense.members.indexOf(oldName);
-                    if (expIndex !== -1) { expense.members[expIndex] = newName.trim(); changed = true; }
-                    
-                    if (expense.splitMembers && expense.splitMembers.includes(oldName)) {
-                        const splitIdx = expense.splitMembers.indexOf(oldName);
-                        if (splitIdx > -1) { expense.splitMembers[splitIdx] = newName.trim(); changed = true; }
-                    }
-                    if (expense.splitShares && expense.splitShares[oldName] !== undefined) {
-                        expense.splitShares[newName.trim()] = expense.splitShares[oldName];
-                        delete expense.splitShares[oldName]; changed = true;
-                    }
-                    if (expense.splitPercentages && expense.splitPercentages[oldName] !== undefined) {
-                        expense.splitPercentages[newName.trim()] = expense.splitPercentages[oldName];
-                        delete expense.splitPercentages[oldName]; changed = true;
-                    }
-                });
-                if(changed) window.saveGroups([group]);
-            });
-            window.appState.user = updatedUser;
-            updateProfileDP(updatedUser);
-        } else if (newName !== null && newName.trim() === "") {
-            window.showCustomAlert('Name cannot be empty.');
-        }
+    window.openEditProfile = () => {
         document.getElementById('profileMenuModalOverlay').style.display = 'none';
+        if (!window.appState.user) return;
+        window.hideAllSections();
+        document.getElementById('editProfileSection').style.display = 'flex';
+        document.getElementById('editProfileName').value = window.appState.user.name;
+        document.getElementById('editProfilePhone').value = window.appState.user.phone;
+    };
+
+    window.saveEditedProfile = async () => {
+        const newName = document.getElementById('editProfileName').value.trim();
+        const newPhone = document.getElementById('editProfilePhone').value.trim();
+
+        if (!newName || !newPhone) {
+            window.showCustomAlert('Name and Mobile Number cannot be empty.');
+            return;
+        }
+
+        const oldPhone = window.appState.user.phone;
+        const oldName = window.appState.user.name;
+
+        let phoneChanged = newPhone !== oldPhone;
+        let nameChanged = newName !== oldName;
+
+        if (!phoneChanged && !nameChanged) {
+            window.showGroupSection();
+            return;
+        }
+
+        if (phoneChanged) {
+            const userRef = doc(publicCollection('users'), newPhone);
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+                window.showCustomAlert("Mobile number is already registered to another account.");
+                return;
+            }
+        }
+
+        const updatedUser = { 
+            ...window.appState.user, 
+            name: newName, 
+            phone: newPhone,
+            id: newPhone,
+            initials: window.getInitials(newName).toUpperCase() 
+        };
+
+        try {
+            if (phoneChanged) {
+                await setDoc(doc(publicCollection('users'), newPhone), updatedUser);
+                await deleteDoc(doc(publicCollection('users'), oldPhone));
+                localStorage.setItem('splitkar_logged_in_phone', newPhone);
+            } else {
+                await setDoc(doc(publicCollection('users'), oldPhone), updatedUser);
+            }
+
+            if (nameChanged) {
+                let groups = window.getGroups();
+                groups.forEach(group => {
+                    let changed = false;
+                    const memberIndex = group.members.indexOf(oldName);
+                    if (memberIndex !== -1) { group.members[memberIndex] = newName; changed = true; }
+                    
+                    group.expenses.forEach(expense => {
+                        if (expense.payer === oldName) { expense.payer = newName; changed = true; }
+                        const expIndex = expense.members.indexOf(oldName);
+                        if (expIndex !== -1) { expense.members[expIndex] = newName; changed = true; }
+                        
+                        if (expense.splitMembers && expense.splitMembers.includes(oldName)) {
+                            const splitIdx = expense.splitMembers.indexOf(oldName);
+                            if (splitIdx > -1) { expense.splitMembers[splitIdx] = newName; changed = true; }
+                        }
+                        if (expense.splitShares && expense.splitShares[oldName] !== undefined) {
+                            expense.splitShares[newName] = expense.splitShares[oldName];
+                            delete expense.splitShares[oldName]; changed = true;
+                        }
+                        if (expense.splitPercentages && expense.splitPercentages[oldName] !== undefined) {
+                            expense.splitPercentages[newName] = expense.splitPercentages[oldName];
+                            delete expense.splitPercentages[oldName]; changed = true;
+                        }
+                    });
+                    if(changed) window.saveGroups([group]);
+                });
+            }
+
+            window.appState.user = updatedUser;
+            window.updateProfileDP(updatedUser);
+            window.showGroupSection();
+
+        } catch (e) {
+            console.error("Error updating profile", e);
+            window.showCustomAlert("Error updating profile.");
+        }
     };
 
     // Initialize logic
@@ -1005,17 +1162,19 @@
         'water': 'water.png'
     };
 
-    function getExpenseLogo(expenseName) {
+    window.getExpenseLogo = function(expenseName) {
         const lowerCaseExpenseName = expenseName.toLowerCase().trim();
         if (categoryLogos[lowerCaseExpenseName]) return categoryLogos[lowerCaseExpenseName];
         for (const key in categoryLogos) {
             if (lowerCaseExpenseName.includes(key)) return categoryLogos[key];
         }
         return 'wallet.png';
-    }
+    };
 
     let confirmResolver;
     let isDeleteModeActive = false;
+    window.isActivityDeleteModeActive = false;
+    
     let currentExpenseSplitDetails = { payer: '', splitType: 'equally', shares: {}, percentages: {} };
     let previousPageId = null; 
     let activeExpensePage = null;
@@ -1026,7 +1185,23 @@
     let twoMemberOtherMember = '';
     let currentGroupIdForExpense = null;
 
-    function showCustomInputModal(message, defaultValue = '') {
+    window.restoreRoute = function() {
+        let route = { id: 'groupSection' };
+        try {
+            const saved = sessionStorage.getItem('splitkar_route');
+            if(saved) route = JSON.parse(saved);
+        } catch(e) {}
+
+        if(route.id === 'expensesSection' && route.groupId) {
+            window.showExpensesSection(route.groupId, route.groupName);
+        } else if (route.id === 'activitySection') {
+            window.switchTab('activity');
+        } else {
+            window.showGroupSection();
+        }
+    };
+
+    window.showCustomInputModal = function(message, defaultValue = '') {
         return new Promise(resolve => {
             const modalOverlay = document.getElementById('customInputModalOverlay');
             document.getElementById('customModalMessage').textContent = message;
@@ -1053,27 +1228,27 @@
             cancelButton.addEventListener('click', handleCancelClick);
             inputField.addEventListener('keypress', handleKeyPress);
         });
-    }
+    };
 
-    function showConfirmModal(message) {
+    window.showConfirmModal = function(message) {
       document.getElementById('confirmModalMessage').textContent = message;
       document.getElementById('confirmModalOverlay').style.display = 'flex';
       return new Promise(resolve => { confirmResolver = resolve; });
-    }
+    };
 
-    function handleConfirm(result) {
+    window.handleConfirm = function(result) {
       document.getElementById('confirmModalOverlay').style.display = 'none';
       if (confirmResolver) { confirmResolver(result); confirmResolver = null; }
-    }
+    };
 
-    function generateUUID() {
+    window.generateUUID = function() {
       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
         var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
       });
-    }
+    };
 
-    function showCustomAlert(message) {
+    window.showCustomAlert = function(message) {
       const messageBox = document.createElement('div');
       messageBox.style.cssText = `
         position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -1089,36 +1264,44 @@
         ">OK</button>
       `;
       document.getElementById('appContainer').appendChild(messageBox);
-    }
+    };
 
-    function hideAllSections() {
+    window.hideAllSections = function() {
         const sections = document.querySelectorAll('.section');
         sections.forEach(s => s.style.display = 'none');
         document.getElementById("groupInfoModalOverlay").style.display = "none";
         document.getElementById("customInputModalOverlay").style.display = "none";
         document.getElementById("profileMenuModalOverlay").style.display = "none";
         document.getElementById("activityDetailModalOverlay").style.display = "none";
-    }
+    };
 
-    function switchTab(tabName) {
+    window.switchTab = function(tabName) {
         if(tabName === 'groups') {
-            showGroupSection();
+            window.showGroupSection();
         } else if(tabName === 'activity') {
-            hideAllSections();
+            window.hideAllSections();
             document.getElementById('activitySection').style.display = 'flex';
-            renderActivities();
+            sessionStorage.setItem('splitkar_route', JSON.stringify({ id: 'activitySection' }));
+            window.renderActivities();
         }
-    }
+    };
 
-    function showLoginSection() { hideAllSections(); document.getElementById("loginSection").style.display = "flex"; }
-    function showAuthSection() { 
-        hideAllSections(); 
+    window.showLoginSection = function() { 
+        window.hideAllSections(); 
+        sessionStorage.removeItem('splitkar_route');
+        document.getElementById("loginSection").style.display = "flex"; 
+        const btn = document.getElementById("getStartedBtn");
+        if(btn) btn.style.display = "flex"; // Reveal button smoothly once checking completes
+    };
+    window.showAuthSection = function() { 
+        window.hideAllSections(); 
+        sessionStorage.removeItem('splitkar_route');
         document.getElementById("authSection").style.display = "flex"; 
-        switchAuthTab('login');
-    }
-    function showGroupSectionFromExpenses() { hideAllSections(); document.getElementById("groupSection").style.display = "flex"; }
+        window.switchAuthTab('login');
+    };
+    window.showGroupSectionFromExpenses = function() { window.hideAllSections(); document.getElementById("groupSection").style.display = "flex"; };
 
-    window.switchAuthTab = (tab) => {
+    window.switchAuthTab = function(tab) {
         const loginForm = document.getElementById('loginForm');
         const signupForm = document.getElementById('signupForm');
         const tabLogin = document.getElementById('tabLogin');
@@ -1140,17 +1323,17 @@
         }
     };
 
-    function getInitials(name) {
+    window.getInitials = function(name) {
       const names = name.trim().split(" ");
       return names.length >= 2 ? names[0][0] + names[1][0] : names[0][0];
-    }
+    };
 
-    function getRandomColor() {
+    window.getRandomColor = function() {
       const colors = ['#FC8181', '#F6E05E', '#68D391', '#63B3ED', '#B794F4'];
       return colors[Math.floor(Math.random() * colors.length)];
-    }
+    };
 
-    function updateProfileDP(userObj) {
+    window.updateProfileDP = function(userObj) {
         if (!userObj) return;
         const dps = [document.getElementById("profileDP"), document.getElementById("profileDP_activity")];
         dps.forEach(dp => {
@@ -1159,15 +1342,16 @@
                 dp.style.backgroundColor = userObj.bgColor || '#38B2AC';
             }
         });
-    }
+    };
 
-    function showGroupSection() {
-        hideAllSections();
+    window.showGroupSection = function() {
+        window.hideAllSections();
         document.getElementById("groupSection").style.display = "flex";
-        renderGroups();
-    }
+        sessionStorage.setItem('splitkar_route', JSON.stringify({ id: 'groupSection' }));
+        window.renderGroups();
+    };
 
-    function renderGroups() {
+    window.renderGroups = function() {
         const groupList = document.getElementById('myGroupList');
         const noGroupsMessage = document.querySelector('.no-groups');
         const groups = window.getGroups ? window.getGroups() : [];
@@ -1175,16 +1359,18 @@
         
         groupList.innerHTML = '';
         
-        // Only show groups current user is a part of
         const userGroups = currentUser ? groups.filter(g => g.members.includes(currentUser.name)) : groups;
+        const removeGroupBtn = document.getElementById('removeGroupBtn');
 
         if (userGroups.length === 0) {
             groupList.classList.add('hidden');
             noGroupsMessage.classList.remove('hidden');
             noGroupsMessage.textContent = 'No groups yet. Join one or create your own!';
+            if (removeGroupBtn) removeGroupBtn.style.display = 'none';
         } else {
             groupList.classList.remove('hidden');
             noGroupsMessage.classList.add('hidden');
+            if (removeGroupBtn) removeGroupBtn.style.display = '';
             userGroups.forEach(group => {
                 const groupItem = document.createElement('div');
                 groupItem.classList.add('group-item');
@@ -1202,24 +1388,24 @@
                         <i class="fas fa-users" style="color:var(--text-muted);"></i>
                     </div>
                     <span class="group-name-text">${group.name}</span>
-                    <button style="background:none; border:none; color:var(--text-muted); cursor:pointer;" onclick="event.stopPropagation(); editGroupName('${group.id}', '${group.name}')">
+                    <button style="background:none; border:none; color:var(--text-muted); cursor:pointer;" onclick="event.stopPropagation(); window.editGroupName('${group.id}', '${group.name}')">
                         <i class="fas fa-edit"></i>
                     </button>
                 `;
 
                 groupItem.addEventListener('click', (event) => {
                     if (isDeleteModeActive || event.target.type === 'checkbox' || event.target.closest('button')) return;
-                    showExpensesSection(group.id, group.name);
+                    window.showExpensesSection(group.id, group.name);
                 });
 
                 groupList.appendChild(groupItem);
             });
         }
-        updateGroupVisibility();
-    }
+        window.updateGroupVisibility();
+    };
 
-    async function editGroupName(groupId, oldName) {
-        const newName = await showCustomInputModal(`Enter new name for "${oldName}":`, oldName);
+    window.editGroupName = async function(groupId, oldName) {
+        const newName = await window.showCustomInputModal(`Enter new name for "${oldName}":`, oldName);
         if (newName !== null && newName.trim() !== "" && newName.trim().toLowerCase() !== oldName.toLowerCase()) {
             let groups = window.getGroups();
             const group = groups.find(g => g.id === groupId);
@@ -1228,11 +1414,11 @@
                 await window.saveGroups([group]);
             }
         } else if (newName !== null && newName.trim() === "") {
-            showCustomAlert('Group name cannot be empty.');
+            window.showCustomAlert('Group name cannot be empty.');
         }
-    }
+    };
 
-    function renderExpenses(groupId) {
+    window.renderExpenses = function(groupId) {
         const expensesListElement = document.getElementById('groupExpensesList');
         const noExpensesMessage = document.getElementById('noExpensesMessage');
         const groups = window.getGroups();
@@ -1244,7 +1430,7 @@
         const currentUserName = currentUser ? currentUser.name : '';
         if (expenses.length === 0) {
             noExpensesMessage.classList.remove('hidden');
-            renderBalanceSummary(groupId);
+            window.renderBalanceSummary(groupId);
             return;
         } 
         
@@ -1285,7 +1471,7 @@
 
             const expenseItem = document.createElement('div');
             expenseItem.classList.add('expense-item');
-            expenseItem.onclick = () => showExpenseDetailPage(expense.id, groupId);
+            expenseItem.onclick = () => window.showExpenseDetailPage(expense.id, groupId);
 
             const date = new Date(expense.timestamp);
             const dateOptions = { month: 'short', day: 'numeric' };
@@ -1298,7 +1484,7 @@
                 else displayAmountText = '₹0.00';
             } else { displayAmountText = 'N/A'; }
             
-            const logoUrl = getExpenseLogo(expense.name);
+            const logoUrl = window.getExpenseLogo(expense.name);
             expenseItem.innerHTML = `
                 <div class="expense-date-time">
                     <span style="color:var(--text-main); font-weight:500;">${date.toLocaleDateString('en-US', dateOptions)}</span>
@@ -1318,10 +1504,10 @@
             expensesListElement.appendChild(expenseItem);
         });
 
-        renderBalanceSummary(groupId);
-    }
+        window.renderBalanceSummary(groupId);
+    };
 
-    function populateMembersDropdown(groupId) {
+    window.populateMembersDropdown = function(groupId) {
         const membersDropdown = document.getElementById('membersDropdown');
         const groups = window.getGroups();
         const currentGroup = groups.find(g => g.id === groupId);
@@ -1343,10 +1529,10 @@
                 membersDropdown.appendChild(memberOption);
             }
         });
-        membersDropdown.onchange = () => renderBalanceSummary(groupId);
-    }
+        membersDropdown.onchange = () => window.renderBalanceSummary(groupId);
+    };
 
-    function renderBalanceSummary(groupId) {
+    window.renderBalanceSummary = function(groupId) {
         const groupBalanceSummaryEl = document.getElementById('groupBalanceSummary');
         const membersDropdown = document.getElementById('membersDropdown');
         const perspectiveMemberName = membersDropdown.value;
@@ -1417,19 +1603,20 @@
         } else {
             groupBalanceSummaryEl.textContent = 'All settled up!';
         }
-    }
+    };
 
-    function showExpensesSection(groupId, groupName) {
-      hideAllSections();
+    window.showExpensesSection = function(groupId, groupName) {
+      window.hideAllSections();
       document.getElementById("expensesSection").style.display = "flex";
       document.getElementById("expensesGroupName").textContent = groupName;
       document.getElementById("expensesSection").dataset.currentGroupId = groupId;
       currentGroupIdForExpense = groupId;
-      populateMembersDropdown(groupId);
-      renderExpenses(groupId);
-    }
+      sessionStorage.setItem('splitkar_route', JSON.stringify({ id: 'expensesSection', groupId: groupId, groupName: groupName }));
+      window.populateMembersDropdown(groupId);
+      window.renderExpenses(groupId);
+    };
 
-    function updateGroupVisibility() {
+    window.updateGroupVisibility = function() {
       const searchInput = document.querySelector('#searchInput');
       if (!searchInput) return; 
       const searchValue = searchInput.value.toLowerCase();
@@ -1445,22 +1632,23 @@
           item.style.display = 'none';
         }
       });
-    }
+    };
+    
     const searchInput = document.querySelector('#searchInput');
-    if (searchInput) searchInput.addEventListener('input', updateGroupVisibility);
+    if (searchInput) searchInput.addEventListener('input', window.updateGroupVisibility);
 
-    function showAddGroupSection() {
-      hideAllSections();
+    window.showAddGroupSection = function() {
+      window.hideAllSections();
       document.getElementById("addGroupSection").style.display = "flex";
       document.getElementById("groupNameLine").textContent = '';
-    }
+    };
 
     document.getElementById('doneBtn').addEventListener('click', async () => {
       const groupNameLine = document.getElementById('groupNameLine');
       const groupName = groupNameLine.textContent.trim();
       
-      if (!groupName) { showCustomAlert('Please enter a group name.'); return; }
-      if (!window.appState.user) { showCustomAlert("Please login first."); return; }
+      if (!groupName) { window.showCustomAlert('Please enter a group name.'); return; }
+      if (!window.appState.user) { window.showCustomAlert("Please login first."); return; }
       
       const currentUserName = window.appState.user.name;
       
@@ -1468,7 +1656,7 @@
       const groupCode = String.fromCharCode(65+Math.floor(Math.random()*26)) + String.fromCharCode(65+Math.floor(Math.random()*26)) + Math.floor(10000 + Math.random() * 90000);
 
       const newGroup = { 
-          id: generateUUID(), 
+          id: window.generateUUID(), 
           name: groupName, 
           code: groupCode,
           members: finalMembers, 
@@ -1476,15 +1664,15 @@
       };
       
       await window.saveGroups([newGroup]);
-      window.logActivity(newGroup.id, newGroup.name, `${currentUserName} created the group.`);
-      showGroupSection(); 
+      window.logActivity(newGroup.id, newGroup.name, `${currentUserName} created the group.`, null, finalMembers);
+      window.showGroupSection(); 
     });
 
-    function showAddExpensePage() {
-      hideAllSections();
+    window.showAddExpensePage = function() {
+      window.hideAllSections();
       document.getElementById('expenseNameInput').textContent = '';
       document.getElementById('expenseAmountInput').textContent = '';
-      resetExpenseSplitDetails();
+      window.resetExpenseSplitDetails();
       if (window.appState.user) currentExpenseSplitDetails.payer = window.appState.user.name;
 
       document.getElementById('expensePayerDisplay').textContent = window.appState.user ? 'You' : 'Select Payer';
@@ -1503,29 +1691,29 @@
           splitOptionsContainer.style.display = 'none';
           twoMemberBtnContainer.style.display = 'flex';
           const twoMemberBtn = twoMemberBtnContainer.querySelector('#addExpenseTwoMemberDirectSplitBtn');
-          twoMemberBtn.onclick = () => { showTwoMemberSplitPage(currentGroup); };
+          twoMemberBtn.onclick = () => { window.showTwoMemberSplitPage(currentGroup); };
       } else {
           splitOptionsContainer.style.display = 'flex';
           twoMemberBtnContainer.style.display = 'none';
       }
       document.getElementById('addExpensePage').style.display = 'flex';
-    }
+    };
 
-    function closeAddExpensePage() {
+    window.closeAddExpensePage = function() {
       const currentGroupId = document.getElementById('expensesSection').dataset.currentGroupId;
       const groups = window.getGroups();
       const currentGroup = groups.find(g => g.id === currentGroupId);
-      if (currentGroup) showExpensesSection(currentGroup.id, currentGroup.name);
-      else showGroupSection();
-    }
+      if (currentGroup) window.showExpensesSection(currentGroup.id, currentGroup.name);
+      else window.showGroupSection();
+    };
 
-    async function finalizeExpenseSave(isEdit) {
+    window.finalizeExpenseSave = async function(isEdit) {
         const expenseName = isEdit ? document.getElementById('editExpenseNameInput').textContent.trim() : document.getElementById('expenseNameInput').textContent.trim();
         const expenseAmountText = isEdit ? document.getElementById('editExpenseAmountInput').textContent.trim() : document.getElementById('expenseAmountInput').textContent.trim();
         const expenseAmount = parseFloat(expenseAmountText.replace(/[^0-9.-]+/g, ""));
         
-        if (!expenseName) { showCustomAlert('Please enter the name of the expense.'); return; }
-        if (isNaN(expenseAmount) || expenseAmount <= 0) { showCustomAlert('Please enter a valid amount.'); return; }
+        if (!expenseName) { window.showCustomAlert('Please enter the name of the expense.'); return; }
+        if (isNaN(expenseAmount) || expenseAmount <= 0) { window.showCustomAlert('Please enter a valid amount.'); return; }
 
         const currentGroupId = document.getElementById('expensesSection').dataset.currentGroupId || document.getElementById('editExpensePage').dataset.currentGroupId;
         const currentUser = window.appState.user;
@@ -1556,12 +1744,12 @@
             splitPercentages = {};
         } else if (splitType === 'unequally') {
             const sumShares = Object.values(splitShares).reduce((acc, val) => acc + parseFloat(val || 0), 0);
-            if (Math.abs(sumShares - expenseAmount) > 0.01) { showCustomAlert('The sum of unequal shares must match the total expense amount.'); return; }
+            if (Math.abs(sumShares - expenseAmount) > 0.01) { window.showCustomAlert('The sum of unequal shares must match the total expense amount.'); return; }
             finalSplitMembers = Object.keys(splitShares).filter(member => splitShares[member] > 0);
             splitPercentages = {};
         } else if (splitType === 'percentage') {
             const sumPercentages = Object.values(splitPercentages).reduce((acc, val) => acc + parseFloat(val || 0), 0);
-            if (Math.abs(sumPercentages - 100) > 0.01) { showCustomAlert('The sum of percentages must be 100%.'); return; }
+            if (Math.abs(sumPercentages - 100) > 0.01) { window.showCustomAlert('The sum of percentages must be 100%.'); return; }
             finalSplitMembers = Object.keys(splitPercentages).filter(member => splitPercentages[member] > 0);
             splitShares = {};
         } else if (splitType === 'fullAmount') {
@@ -1589,60 +1777,60 @@
                 currentGroup.expenses[expenseIndex].splitPercentages = splitPercentages;
                 currentGroup.expenses[expenseIndex].splitMembers = finalSplitMembers;
 
-                window.logActivity(currentGroupId, currentGroup.name, `${currentUser.name} edited the expense "${expenseName}".`, hasChanges ? editDetails : null);
+                window.logActivity(currentGroupId, currentGroup.name, `${currentUser.name} edited the expense "${expenseName}".`, hasChanges ? editDetails : null, currentGroup.members);
             }
         } else {
             const newExpense = {
-                id: generateUUID(), name: expenseName, amount: expenseAmount, payer: payer,
+                id: window.generateUUID(), name: expenseName, amount: expenseAmount, payer: payer,
                 timestamp: new Date().toISOString(), members: currentGroup.members, splitType: splitType,
                 splitShares: splitShares, splitPercentages: splitPercentages, splitMembers: finalSplitMembers 
             };
             currentGroup.expenses.push(newExpense);
-            window.logActivity(currentGroupId, currentGroup.name, `${payer} added an expense "${expenseName}" for ₹${expenseAmount.toFixed(2)}.`);
+            window.logActivity(currentGroupId, currentGroup.name, `${payer} added an expense "${expenseName}" for ₹${expenseAmount.toFixed(2)}.`, null, currentGroup.members);
         }
 
         await window.saveGroups([currentGroup]);
-        if (isEdit) cancelEditExpense();
-        else closeAddExpensePage();
-        resetExpenseSplitDetails();
-    }
+        if (isEdit) window.cancelEditExpense();
+        else window.closeAddExpensePage();
+        window.resetExpenseSplitDetails();
+    };
 
-    function doneAddExpense() { finalizeExpenseSave(false); }
-    function saveEditedExpense() { finalizeExpenseSave(true); }
+    window.doneAddExpense = function() { window.finalizeExpenseSave(false); };
+    window.saveEditedExpense = function() { window.finalizeExpenseSave(true); };
 
-    async function deleteExpenseFromEditPage() {
+    window.deleteExpenseFromEditPage = async function() {
       const currentGroupId = document.getElementById('editExpensePage').dataset.currentGroupId;
       const groups = window.getGroups();
       const group = groups.find(g => g.id === currentGroupId);
       const expense = group ? group.expenses.find(e => e.id === currentEditingExpenseId) : null;
       if (!expense) return;
 
-      const confirmDelete = await showConfirmModal(`Are you sure you want to delete "${expense.name}"?`);
+      const confirmDelete = await window.showConfirmModal(`Are you sure you want to delete "${expense.name}"?`);
       if (confirmDelete) {
         group.expenses = group.expenses.filter(e => e.id !== currentEditingExpenseId);
         await window.saveGroups([group]);
-        window.logActivity(currentGroupId, group.name, `${window.appState.user.name} deleted expense "${expense.name}" (₹${expense.amount.toFixed(2)}).`);
-        cancelEditExpense();
+        window.logActivity(currentGroupId, group.name, `${window.appState.user.name} deleted expense "${expense.name}" (₹${expense.amount.toFixed(2)}).`, null, group.members);
+        window.cancelEditExpense();
       }
-    }
+    };
 
-    async function settleUp() {
+    window.settleUp = async function() {
       const currentGroupId = document.getElementById('expensesSection').dataset.currentGroupId;
       if (!currentGroupId) return;
       const groups = window.getGroups();
       const group = groups.find(g => g.id === currentGroupId);
       if (!group) return;
-      const confirmSettle = await showConfirmModal(`Are you sure you want to settle up all expenses for "${group.name}"?`);
+      const confirmSettle = await window.showConfirmModal(`Are you sure you want to settle up all expenses for "${group.name}"?`);
       if (confirmSettle) {
         group.expenses = [];
         await window.saveGroups([group]);
-        window.logActivity(currentGroupId, group.name, `${window.appState.user.name} settled up all expenses.`);
+        window.logActivity(currentGroupId, group.name, `${window.appState.user.name} settled up all expenses.`, null, group.members);
       }
-    }
+    };
 
-    function closeGroupInfoModal() { document.getElementById('groupInfoModalOverlay').style.display = 'none'; }
+    window.closeGroupInfoModal = function() { document.getElementById('groupInfoModalOverlay').style.display = 'none'; };
 
-    function showGroupInfo() {
+    window.showGroupInfo = function() {
         const currentGroupId = document.getElementById('expensesSection').dataset.currentGroupId;
         const groups = window.getGroups();
         const group = groups.find(g => g.id === currentGroupId);
@@ -1659,24 +1847,23 @@
                 li.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding: 12px 0; border-bottom: 1px solid var(--border-light);";
                 li.innerHTML = `
                     <span>${memberName} ${memberName === currentUser.name ? '<span style="color:var(--text-muted); font-size:12px;">(You)</span>' : ''}</span>
-                    <i class="fas fa-trash-alt" style="color: var(--secondary); cursor: pointer; padding: 8px;" onclick="removeMemberFromGroup('${group.id}', '${memberName}')" title="Remove Member"></i>
+                    <i class="fas fa-trash-alt" style="color: var(--secondary); cursor: pointer; padding: 8px;" onclick="window.removeMemberFromGroup('${group.id}', '${memberName}')" title="Remove Member"></i>
                 `;
                 memberList.appendChild(li);
             });
             document.getElementById('groupInfoModalOverlay').style.display = 'flex';
         }
-    }
+    };
 
-    // Global function to remove any member from the group
-    window.removeMemberFromGroup = async (groupId, memberName) => {
-        const confirmDel = await showConfirmModal(`Are you sure you want to remove ${memberName} from this group?`);
+    window.removeMemberFromGroup = async function(groupId, memberName) {
+        const confirmDel = await window.showConfirmModal(`Are you sure you want to remove ${memberName} from this group?`);
         if (confirmDel) {
             const groups = window.getGroups();
             const group = groups.find(g => g.id === groupId);
             if (group) {
+                const originalMembers = [...group.members];
                 group.members = group.members.filter(m => m !== memberName);
                 
-                // Update expenses to prevent calculation bugs from missing members
                 group.expenses.forEach(expense => {
                     if (expense.members) expense.members = expense.members.filter(m => m !== memberName);
                     if (expense.splitMembers) expense.splitMembers = expense.splitMembers.filter(m => m !== memberName);
@@ -1685,21 +1872,20 @@
                 });
 
                 await window.saveGroups([group]);
-                window.logActivity(groupId, group.name, `${window.appState.user.name} removed ${memberName} from the group.`);
+                window.logActivity(groupId, group.name, `${window.appState.user.name} removed ${memberName} from the group.`, null, originalMembers);
                 
-                // If user removed themselves, redirect them to main screen
                 if (memberName === window.appState.user.name) {
-                    closeGroupInfoModal();
-                    showGroupSection();
+                    window.closeGroupInfoModal();
+                    window.showGroupSection();
                 } else {
-                    showGroupInfo(); // Refresh modal
-                    renderExpenses(groupId); // Refresh background expense list
+                    window.showGroupInfo();
+                    window.renderExpenses(groupId);
                 }
             }
         }
     };
 
-    function resetExpenseSplitDetails() {
+    window.resetExpenseSplitDetails = function() {
         currentExpenseSplitDetails = { payer: '', splitType: 'equally', shares: {}, percentages: {} };
         currentActiveSplitTab = 'equally'; 
         currentExpenseAmountForSplit = 0;
@@ -1707,12 +1893,12 @@
         previousPageId = null;
         twoMemberOtherMember = ''; 
         currentGroupIdForExpense = null;
-    }
+    };
 
-    function toggleProfileMenu(event) {
+    window.toggleProfileMenu = function(event) {
         event.stopPropagation();
         document.getElementById('profileMenuModalOverlay').style.display = 'flex';
-    }
+    };
 
     document.addEventListener('click', (event) => {
         const profileMenuOverlay = document.getElementById('profileMenuModalOverlay');
@@ -1721,15 +1907,15 @@
         }
     });
 
-    function showExpenseDetailPage(expenseId, groupId) {
-        hideAllSections();
+    window.showExpenseDetailPage = function(expenseId, groupId) {
+        window.hideAllSections();
         const groups = window.getGroups();
         const group = groups.find(g => g.id === groupId);
         const expense = group ? group.expenses.find(e => e.id === expenseId) : null;
 
         if (!expense) {
-            showCustomAlert('Expense not found.');
-            showExpensesSection(groupId, group.name);
+            window.showCustomAlert('Expense not found.');
+            window.showExpensesSection(groupId, group.name);
             return;
         }
 
@@ -1772,19 +1958,19 @@
         });
 
         document.getElementById('expenseDetailPage').style.display = 'flex';
-    }
+    };
 
-    function closeExpenseDetailPage() {
+    window.closeExpenseDetailPage = function() {
         const currentGroupId = document.getElementById('expenseDetailPage').dataset.currentGroupId;
         const groups = window.getGroups();
         const currentGroup = groups.find(g => g.id === currentGroupId);
-        if (currentGroup) showExpensesSection(currentGroup.id, currentGroup.name);
-        else showGroupSection();
+        if (currentGroup) window.showExpensesSection(currentGroup.id, currentGroup.name);
+        else window.showGroupSection();
         currentExpenseDetailId = null; currentEditingExpenseId = null; 
-    }
+    };
 
-    function showEditExpensePage(expenseId, groupId) {
-        hideAllSections();
+    window.showEditExpensePage = function(expenseId, groupId) {
+        window.hideAllSections();
         document.getElementById('editExpensePage').style.display = 'flex';
         document.getElementById('editExpensePage').dataset.currentGroupId = groupId;
         currentEditingExpenseId = expenseId;
@@ -1793,7 +1979,7 @@
         const group = groups.find(g => g.id === groupId);
         const expense = group ? group.expenses.find(e => e.id === expenseId) : null;
         if (!expense) {
-            showCustomAlert('Expense not found for editing.'); closeExpenseDetailPage(); return;
+            window.showCustomAlert('Expense not found for editing.'); window.closeExpenseDetailPage(); return;
         }
 
         document.getElementById('editExpenseNameInput').textContent = expense.name;
@@ -1826,41 +2012,41 @@
             splitOptionsContainer.style.display = 'none';
             twoMemberBtnContainer.style.display = 'flex';
             const twoMemberBtn = twoMemberBtnContainer.querySelector('#editExpenseTwoMemberDirectSplitBtn');
-            twoMemberBtn.onclick = () => { showTwoMemberSplitPage(group); };
+            twoMemberBtn.onclick = () => { window.showTwoMemberSplitPage(group); };
         } else {
             splitOptionsContainer.style.display = 'flex';
             twoMemberBtnContainer.style.display = 'none';
         }
-    }
+    };
 
-    function editExpenseFromDetailPage() { showEditExpensePage(currentExpenseDetailId, document.getElementById('expenseDetailPage').dataset.currentGroupId); }
+    window.editExpenseFromDetailPage = function() { window.showEditExpensePage(currentExpenseDetailId, document.getElementById('expenseDetailPage').dataset.currentGroupId); };
 
-    async function deleteExpenseFromDetailPage() {
+    window.deleteExpenseFromDetailPage = async function() {
         const currentGroupId = document.getElementById('expenseDetailPage').dataset.currentGroupId;
         const groups = window.getGroups();
         const group = groups.find(g => g.id === currentGroupId);
         const expense = group ? group.expenses.find(e => e.id === currentExpenseDetailId) : null;
         if (!expense) return;
 
-        const confirmDelete = await showConfirmModal(`Are you sure you want to delete "${expense.name}"?`);
+        const confirmDelete = await window.showConfirmModal(`Are you sure you want to delete "${expense.name}"?`);
         if (confirmDelete) {
             group.expenses = group.expenses.filter(e => e.id !== currentExpenseDetailId);
             await window.saveGroups([group]);
-            window.logActivity(currentGroupId, group.name, `${window.appState.user.name} deleted expense "${expense.name}" (₹${expense.amount.toFixed(2)}).`);
-            closeExpenseDetailPage();
+            window.logActivity(currentGroupId, group.name, `${window.appState.user.name} deleted expense "${expense.name}" (₹${expense.amount.toFixed(2)}).`, null, group.members);
+            window.closeExpenseDetailPage();
         }
-    }
+    };
 
-    function cancelEditExpense() {
+    window.cancelEditExpense = function() {
         const currentGroupId = document.getElementById('editExpensePage').dataset.currentGroupId;
         const groups = window.getGroups();
         const currentGroup = groups.find(g => g.id === currentGroupId);
-        if (currentGroup) showExpensesSection(currentGroup.id, currentGroup.name);
-        else showGroupSection();
-        currentEditingExpenseId = null; resetExpenseSplitDetails();
-    }
+        if (currentGroup) window.showExpensesSection(currentGroup.id, currentGroup.name);
+        else window.showGroupSection();
+        currentEditingExpenseId = null; window.resetExpenseSplitDetails();
+    };
 
-    function setupNumericInputFiltering(elementId) {
+    window.setupNumericInputFiltering = function(elementId) {
         const inputElement = document.getElementById(elementId);
         inputElement.addEventListener('input', function(event) {
             let text = this.textContent;
@@ -1874,13 +2060,13 @@
             range.collapse(false); 
             sel.removeAllRanges(); sel.addRange(range);
         });
-    }
+    };
 
-    setupNumericInputFiltering('expenseAmountInput');
-    setupNumericInputFiltering('editExpenseAmountInput');
+    window.setupNumericInputFiltering('expenseAmountInput');
+    window.setupNumericInputFiltering('editExpenseAmountInput');
 
-    function showAdjustSplitPage() {
-        hideAllSections();
+    window.showAdjustSplitPage = function() {
+        window.hideAllSections();
         document.getElementById('adjustSplitPage').style.display = 'flex';
         const expenseAmountInput = activeExpensePage === 'addExpensePage' ? document.getElementById('expenseAmountInput') : document.getElementById('editExpenseAmountInput');
         currentExpenseAmountForSplit = parseFloat(expenseAmountInput.textContent.trim().replace(/[^0-9.-]+/g, "")) || 0;
@@ -1888,16 +2074,16 @@
         const payerDisplayId = activeExpensePage === 'addExpensePage' ? 'expensePayerDisplay' : 'editExpensePayerDisplay';
         document.getElementById('adjustSplitPayerDisplay').textContent = document.getElementById(payerDisplayId).textContent;
 
-        setupSplitTabs(); populateSplitContent(currentActiveSplitTab);
-    }
+        window.setupSplitTabs(); window.populateSplitContent(currentActiveSplitTab);
+    };
 
-    function goBackFromAdjustSplit() {
-        hideAllSections();
+    window.goBackFromAdjustSplit = function() {
+        window.hideAllSections();
         if (activeExpensePage) document.getElementById(activeExpensePage).style.display = 'flex';
-        else showGroupSection();
-    }
+        else window.showGroupSection();
+    };
 
-    function setupSplitTabs() {
+    window.setupSplitTabs = function() {
         const tabsContainer = document.getElementById('splitTabsContainer');
         const tabs = tabsContainer.querySelectorAll('.split-tab');
         const indicator = document.getElementById('splitTabIndicator');
@@ -1916,12 +2102,12 @@
             tab.onclick = () => {
                 const targetTab = tab.dataset.tab;
                 currentActiveSplitTab = targetTab;
-                updateSplitTabsUI(targetTab); populateSplitContent(targetTab);
+                window.updateSplitTabsUI(targetTab); window.populateSplitContent(targetTab);
             };
         });
-    }
+    };
 
-    function updateSplitTabsUI(activeTab) {
+    window.updateSplitTabsUI = function(activeTab) {
         const tabsContainer = document.getElementById('splitTabsContainer');
         const tabs = tabsContainer.querySelectorAll('.split-tab');
         const indicator = document.getElementById('splitTabIndicator');
@@ -1938,13 +2124,13 @@
             if (content.id === `${activeTab}TabContent`) content.style.display = 'flex';
             else content.style.display = 'none';
         });
-    }
+    };
 
-    function populateSplitContent(tabType) {
+    window.populateSplitContent = function(tabType) {
         const currentGroupId = document.getElementById('expensesSection').dataset.currentGroupId || document.getElementById('editExpensePage').dataset.currentGroupId;
         const groups = window.getGroups();
         const group = groups.find(g => g.id === currentGroupId);
-        if (!group) { showCustomAlert('Error: Group not found.'); goBackFromAdjustSplit(); return; }
+        if (!group) { window.showCustomAlert('Error: Group not found.'); window.goBackFromAdjustSplit(); return; }
         const groupMembers = group.members;
         const currentUserName = window.appState.user ? window.appState.user.name : '';
 
@@ -1971,14 +2157,14 @@
                     <label for="equally-${member}" style="margin:0;">${member === currentUserName ? 'You' : member}</label>
                 `;
                 equallyList.appendChild(memberItem);
-                memberItem.querySelector(`#equally-${member}`).addEventListener('change', () => { updateEquallySplitDisplay(groupMembers, currentExpenseAmountForSplit); });
+                memberItem.querySelector(`#equally-${member}`).addEventListener('change', () => { window.updateEquallySplitDisplay(groupMembers, currentExpenseAmountForSplit); });
             });
             selectAllCheckbox.checked = initialSelectedMembers.length === groupMembers.length;
             selectAllCheckbox.addEventListener('change', (e) => {
                 equallyList.querySelectorAll('input[type="checkbox"]').forEach(checkbox => checkbox.checked = e.target.checked);
-                updateEquallySplitDisplay(groupMembers, currentExpenseAmountForSplit);
+                window.updateEquallySplitDisplay(groupMembers, currentExpenseAmountForSplit);
             });
-            updateEquallySplitDisplay(groupMembers, currentExpenseAmountForSplit);
+            window.updateEquallySplitDisplay(groupMembers, currentExpenseAmountForSplit);
         } else if (tabType === 'unequally') {
             document.getElementById('unequallySplitTotalExpenseAmount').textContent = `₹${currentExpenseAmountForSplit.toFixed(2)}`;
             currentExpenseSplitDetails.splitType = 'unequally'; currentExpenseSplitDetails.percentages = {};
@@ -1994,13 +2180,13 @@
                 const input = memberItem.querySelector('input');
                 input.addEventListener('input', (e) => {
                     let value = parseFloat(e.target.value); if (isNaN(value)) value = 0;
-                    currentExpenseSplitDetails.shares[member] = value; updateUnequallySplitDisplay(currentExpenseAmountForSplit);
+                    currentExpenseSplitDetails.shares[member] = value; window.updateUnequallySplitDisplay(currentExpenseAmountForSplit);
                 });
                 input.addEventListener('keypress', (e) => {
                     if (!/[0-9.]/.test(e.key) || (e.key === '.' && e.target.value.includes('.'))) e.preventDefault();
                 });
             });
-            updateUnequallySplitDisplay(currentExpenseAmountForSplit);
+            window.updateUnequallySplitDisplay(currentExpenseAmountForSplit);
         } else if (tabType === 'percentage') {
             document.getElementById('percentageSplitTotalPercentage').textContent = `100%`;
             currentExpenseSplitDetails.splitType = 'percentage'; currentExpenseSplitDetails.shares = {};
@@ -2019,17 +2205,17 @@
                 const input = memberItem.querySelector('input');
                 input.addEventListener('input', (e) => {
                     let value = parseFloat(e.target.value); if (isNaN(value)) value = 0; if (value < 0) value = 0;
-                    e.target.value = value; currentExpenseSplitDetails.percentages[member] = value; updatePercentageSplitDisplay();
+                    e.target.value = value; currentExpenseSplitDetails.percentages[member] = value; window.updatePercentageSplitDisplay();
                 });
                 input.addEventListener('keypress', (e) => {
                     if (!/[0-9.]/.test(e.key) || (e.key === '.' && e.target.value.includes('.'))) e.preventDefault();
                 });
             });
-            updatePercentageSplitDisplay();
+            window.updatePercentageSplitDisplay();
         }
-    }
+    };
 
-    function updateEquallySplitDisplay(groupMembers, totalAmount) {
+    window.updateEquallySplitDisplay = function(groupMembers, totalAmount) {
         const equallyList = document.getElementById('equallySplitMembersList');
         const selectedCheckboxes = equallyList.querySelectorAll('input[type="checkbox"]:checked');
         const selectedMembers = Array.from(selectedCheckboxes).map(cb => cb.value);
@@ -2043,9 +2229,9 @@
             else currentExpenseSplitDetails.shares[member] = 0; 
         });
         currentExpenseSplitDetails.splitMembers = selectedMembers; 
-    }
+    };
 
-    function updateUnequallySplitDisplay(totalAmount) {
+    window.updateUnequallySplitDisplay = function(totalAmount) {
         const unequallySummary = document.getElementById('unequallySplitCurrentAmount');
         const unequallyLeftOver = document.getElementById('unequallySplitLeftOver');
         let currentSum = 0;
@@ -2061,9 +2247,9 @@
             unequallyLeftOver.textContent = `₹${Math.abs(difference).toFixed(2)} Over`; unequallyLeftOver.style.color = "var(--secondary)"; 
         }
         currentExpenseSplitDetails.splitMembers = Object.keys(currentExpenseSplitDetails.shares).filter(member => currentExpenseSplitDetails.shares[member] > 0);
-    }
+    };
 
-    function updatePercentageSplitDisplay() {
+    window.updatePercentageSplitDisplay = function() {
         const percentageSummary = document.getElementById('percentageSplitCurrentPercentage');
         const percentageLeftOver = document.getElementById('percentageSplitLeftOver');
         let currentSumPercentage = 0;
@@ -2079,9 +2265,9 @@
             percentageLeftOver.textContent = `${Math.abs(difference).toFixed(2)}% Over`; percentageLeftOver.style.color = "var(--secondary)"; 
         }
         currentExpenseSplitDetails.splitMembers = Object.keys(currentExpenseSplitDetails.percentages).filter(member => currentExpenseSplitDetails.percentages[member] > 0);
-    }
+    };
 
-    function saveAdjustedSplit() {
+    window.saveAdjustedSplit = function() {
         const currentGroupId = document.getElementById('expensesSection').dataset.currentGroupId || document.getElementById('editExpensePage').dataset.currentGroupId;
         const groups = window.getGroups();
         const group = groups.find(g => g.id === currentGroupId);
@@ -2089,12 +2275,12 @@
 
         if (currentActiveSplitTab === 'unequally') {
             const sumShares = Object.values(currentExpenseSplitDetails.shares).reduce((acc, val) => acc + parseFloat(val || 0), 0);
-            if (Math.abs(sumShares - currentExpenseAmountForSplit) > 0.01) { showCustomAlert('Sum of shares must match the total.'); return; }
+            if (Math.abs(sumShares - currentExpenseAmountForSplit) > 0.01) { window.showCustomAlert('Sum of shares must match the total.'); return; }
         } else if (currentActiveSplitTab === 'percentage') {
             const sumPercentages = Object.values(currentExpenseSplitDetails.percentages).reduce((acc, val) => acc + parseFloat(val || 0), 0);
-            if (Math.abs(sumPercentages - 100) > 0.01) { showCustomAlert('Sum of percentages must be 100%.'); return; }
+            if (Math.abs(sumPercentages - 100) > 0.01) { window.showCustomAlert('Sum of percentages must be 100%.'); return; }
         } else if (currentActiveSplitTab === 'equally') {
-            if (document.getElementById('equallySplitMembersList').querySelectorAll('input[type="checkbox"]:checked').length === 0) { showCustomAlert('Select at least one member.'); return; }
+            if (document.getElementById('equallySplitMembersList').querySelectorAll('input[type="checkbox"]:checked').length === 0) { window.showCustomAlert('Select at least one member.'); return; }
         }
 
         const splitDisplayId = activeExpensePage === 'addExpensePage' ? 'expenseSplitDisplay' : 'editExpenseSplitDisplay';
@@ -2109,10 +2295,10 @@
             else splitDisplayText = `You owe ${currentExpenseSplitDetails.payer} full`;
         }
         document.getElementById(splitDisplayId).textContent = splitDisplayText;
-        goBackFromAdjustSplit();
-    }
+        window.goBackFromAdjustSplit();
+    };
 
-    function showPayerSelectionPage() {
+    window.showPayerSelectionPage = function() {
         if (document.getElementById('addExpensePage').style.display === 'flex') { activeExpensePage = 'addExpensePage'; previousPageId = 'addExpensePage'; } 
         else if (document.getElementById('editExpensePage').style.display === 'flex') { activeExpensePage = 'editExpensePage'; previousPageId = 'editExpensePage'; } 
         else if (document.getElementById('adjustSplitPage').style.display === 'flex') { activeExpensePage = 'adjustSplitPage'; previousPageId = 'adjustSplitPage'; }
@@ -2120,11 +2306,11 @@
         const currentGroupId = document.getElementById('expensesSection').dataset.currentGroupId || document.getElementById('editExpensePage').dataset.currentGroupId;
         const groups = window.getGroups();
         const group = groups.find(g => g.id === currentGroupId);
-        if (!group) { goBackFromPayerSelection(); return; }
+        if (!group) { window.goBackFromPayerSelection(); return; }
 
-        if (group.members.length === 2) { showTwoMemberSplitPage(group); return; }
+        if (group.members.length === 2) { window.showTwoMemberSplitPage(group); return; }
 
-        hideAllSections();
+        window.hideAllSections();
         document.getElementById('selectPayerPage').style.display = 'flex';
         const payerListContainer = document.getElementById('payerListContainer');
         payerListContainer.innerHTML = '';
@@ -2134,28 +2320,28 @@
             payerItem.style.marginBottom = "12px";
             payerItem.style.cursor = "pointer";
             payerItem.textContent = member;
-            payerItem.onclick = () => selectPayer(member);
+            payerItem.onclick = () => window.selectPayer(member);
             payerListContainer.appendChild(payerItem);
         });
-    }
+    };
 
-    function selectPayer(payerName) {
+    window.selectPayer = function(payerName) {
         currentExpenseSplitDetails.payer = payerName;
         const currentUserName = window.appState.user.name;
         if (activeExpensePage === 'addExpensePage') document.getElementById('expensePayerDisplay').textContent = payerName === currentUserName ? 'You' : payerName;
         else if (activeExpensePage === 'editExpensePage') document.getElementById('editExpensePayerDisplay').textContent = payerName === currentUserName ? 'You' : payerName;
         else if (activeExpensePage === 'adjustSplitPage') document.getElementById('adjustSplitPayerDisplay').textContent = payerName === currentUserName ? 'You' : payerName;
-        goBackFromPayerSelection();
-    }
+        window.goBackFromPayerSelection();
+    };
 
-    function goBackFromPayerSelection() {
-        hideAllSections();
+    window.goBackFromPayerSelection = function() {
+        window.hideAllSections();
         if (previousPageId) { document.getElementById(previousPageId).style.display = 'flex'; activeExpensePage = previousPageId; previousPageId = null; } 
-        else showGroupSection();
-    }
+        else window.showGroupSection();
+    };
 
-    function showTwoMemberSplitPage(group) {
-        hideAllSections();
+    window.showTwoMemberSplitPage = function(group) {
+        window.hideAllSections();
         document.getElementById('twoMemberSplitPage').style.display = 'flex';
 
         const currentUserName = window.appState.user ? window.appState.user.name : '';
@@ -2177,10 +2363,10 @@
             if (!isFullAmountSplit) initialSplitType = 'equally';
         }
         currentExpenseSplitDetails.splitType = initialSplitType;
-        updateTwoMemberSplitDisplay();
-    }
+        window.updateTwoMemberSplitDisplay();
+    };
 
-    function selectTwoMemberSplit(type, payer) {
+    window.selectTwoMemberSplit = function(type, payer) {
         currentExpenseSplitDetails.splitType = type;
         currentExpenseSplitDetails.payer = payer;
 
@@ -2202,11 +2388,11 @@
             }
         }
         currentExpenseSplitDetails.splitMembers = [currentUserName, otherMember];
-        if (activeExpensePage === 'addExpensePage') finalizeExpenseSave(false);
-        else if (activeExpensePage === 'editExpensePage') finalizeExpenseSave(true);
-    }
+        if (activeExpensePage === 'addExpensePage') window.finalizeExpenseSave(false);
+        else if (activeExpensePage === 'editExpensePage') window.finalizeExpenseSave(true);
+    };
 
-    function updateTwoMemberSplitDisplay() {
+    window.updateTwoMemberSplitDisplay = function() {
         const currentUserName = window.appState.user.name;
         const amount = currentExpenseAmountForSplit;
         const otherMember = twoMemberOtherMember;
@@ -2218,62 +2404,97 @@
         const option1 = document.createElement('div');
         option1.className = 'two-member-split-list-item'; option1.dataset.splitType = 'equally'; option1.dataset.payer = currentUserName;
         option1.innerHTML = `<div><div style="font-weight:600; margin-bottom:4px;">You paid, split equally</div><div style="font-size:14px; color:var(--text-muted);">${otherMember} owes you <span class="owes-you">₹${halfAmount}</span></div></div>`;
-        option1.onclick = () => selectTwoMemberSplit('equally', currentUserName);
+        option1.onclick = () => window.selectTwoMemberSplit('equally', currentUserName);
         twoMemberSplitList.appendChild(option1);
 
         const option2 = document.createElement('div');
         option2.className = 'two-member-split-list-item'; option2.dataset.splitType = 'fullAmount'; option2.dataset.payer = currentUserName;
         option2.innerHTML = `<div><div style="font-weight:600; margin-bottom:4px;">You are owed the full amount</div><div style="font-size:14px; color:var(--text-muted);">${otherMember} owes you <span class="owes-you">₹${amount.toFixed(2)}</span></div></div>`;
-        option2.onclick = () => selectTwoMemberSplit('fullAmount', currentUserName);
+        option2.onclick = () => window.selectTwoMemberSplit('fullAmount', currentUserName);
         twoMemberSplitList.appendChild(option2);
 
         const option3 = document.createElement('div');
         option3.className = 'two-member-split-list-item'; option3.dataset.splitType = 'equally'; option3.dataset.payer = otherMember;
         option3.innerHTML = `<div><div style="font-weight:600; margin-bottom:4px;">${otherMember} paid, split equally</div><div style="font-size:14px; color:var(--text-muted);">You owe ${otherMember} <span class="you-owe">₹${halfAmount}</span></div></div>`;
-        option3.onclick = () => selectTwoMemberSplit('equally', otherMember);
+        option3.onclick = () => window.selectTwoMemberSplit('equally', otherMember);
         twoMemberSplitList.appendChild(option3);
 
         const option4 = document.createElement('div');
         option4.className = 'two-member-split-list-item'; option4.dataset.splitType = 'fullAmount'; option4.dataset.payer = otherMember;
         option4.innerHTML = `<div><div style="font-weight:600; margin-bottom:4px;">${otherMember} is owed the full amount</div><div style="font-size:14px; color:var(--text-muted);">You owe ${otherMember} <span class="you-owe">₹${amount.toFixed(2)}</span></div></div>`;
-        option4.onclick = () => selectTwoMemberSplit('fullAmount', otherMember);
+        option4.onclick = () => window.selectTwoMemberSplit('fullAmount', otherMember);
         twoMemberSplitList.appendChild(option4);
 
         document.querySelectorAll('.two-member-split-list-item').forEach(item => {
             if (item.dataset.payer === currentExpenseSplitDetails.payer && item.dataset.splitType === currentExpenseSplitDetails.splitType) item.classList.add('active');
             else item.classList.remove('active');
         });
-    }
+    };
 
-    function goBackFromTwoMemberSplit() {
-        hideAllSections();
+    window.goBackFromTwoMemberSplit = function() {
+        window.hideAllSections();
         if (previousPageId) { document.getElementById(previousPageId).style.display = 'flex'; activeExpensePage = previousPageId; previousPageId = null; } 
-        else showGroupSection();
-    }
+        else window.showGroupSection();
+    };
 
-    function toggleDeleteMode() {
+    window.toggleDeleteMode = function() {
         isDeleteModeActive = !isDeleteModeActive;
         const defaultButtons = document.getElementById('defaultGroupButtons');
         const deleteModeButtons = document.getElementById('deleteModeGroupButtons');
         if (isDeleteModeActive) { defaultButtons.classList.add('hidden'); deleteModeButtons.classList.remove('hidden'); } 
         else { defaultButtons.classList.remove('hidden'); deleteModeButtons.classList.add('hidden'); }
-        renderGroups();
-    }
+        window.renderGroups();
+    };
 
-    async function deleteSelectedGroups() {
+    window.deleteSelectedGroups = async function() {
         const checkedBoxes = document.querySelectorAll('.delete-checkbox:checked');
-        if (checkedBoxes.length === 0) { showCustomAlert('Select at least one group.'); return; }
+        if (checkedBoxes.length === 0) { window.showCustomAlert('Select at least one group.'); return; }
         const groupIdsToDelete = Array.from(checkedBoxes).map(cb => cb.dataset.groupId);
-        const confirm = await showConfirmModal(`Delete ${groupIdsToDelete.length} group(s)? This cannot be undone.`);
+        const confirm = await window.showConfirmModal(`Delete ${groupIdsToDelete.length} group(s)? This cannot be undone.`);
         if (confirm) {
             for(const id of groupIdsToDelete) {
                 await window.deleteGroupDoc(id);
             }
-            toggleDeleteMode(); 
+            window.toggleDeleteMode(); 
         }
-    }
+    };
 
-    window.showActivityDetails = (activityId) => {
+    window.toggleActivityDeleteMode = function() {
+        window.isActivityDeleteModeActive = !window.isActivityDeleteModeActive;
+        const actions = document.getElementById('activityDeleteActions');
+        const headerBtn = document.getElementById('activityTrashBtn');
+        if (window.isActivityDeleteModeActive) {
+            actions.classList.remove('hidden');
+            headerBtn.style.color = "var(--secondary)";
+        } else {
+            actions.classList.add('hidden');
+            headerBtn.style.color = "var(--text-muted)";
+        }
+        window.renderActivities();
+    };
+
+    window.toggleSelectAllActivities = function(checkbox) {
+        const checkboxes = document.querySelectorAll('.activity-delete-checkbox');
+        checkboxes.forEach(cb => cb.checked = checkbox.checked);
+    };
+
+    window.updateActivitySelectAllState = function() {
+        const checkboxes = document.querySelectorAll('.activity-delete-checkbox');
+        const selectAll = document.getElementById('selectAllActivities');
+        if (checkboxes.length === 0) return;
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        selectAll.checked = allChecked;
+    };
+
+    window.toggleActivityCheckbox = function(id) {
+        const cb = document.getElementById('chk-act-' + id);
+        if (cb) {
+            cb.checked = !cb.checked;
+            window.updateActivitySelectAllState();
+        }
+    };
+
+    window.showActivityDetails = function(activityId) {
         const act = window.appState.activities.find(a => a.id === activityId);
         if(!act || !act.details) return;
 
@@ -2304,11 +2525,11 @@
         document.getElementById('activityDetailModalOverlay').style.display = 'flex';
     };
 
-    window.closeActivityDetailModal = () => {
+    window.closeActivityDetailModal = function() {
         document.getElementById('activityDetailModalOverlay').style.display = 'none';
     };
 
-    window.renderActivities = () => {
+    window.renderActivities = function() {
         const list = document.getElementById('activityList');
         list.innerHTML = '';
         const currentUser = window.appState.user;
@@ -2317,7 +2538,15 @@
         const userGroups = window.appState.groups.filter(g => g.members.includes(currentUser.name)).map(g => g.id);
 
         const relevantActivities = window.appState.activities
-            .filter(a => userGroups.includes(a.groupId))
+            .filter(a => {
+                const isDeletedByMe = a.deletedBy && a.deletedBy.includes(currentUser.name);
+                if (isDeletedByMe) return false;
+                
+                if (a.involvedUsers && a.involvedUsers.length > 0) {
+                    return a.involvedUsers.includes(currentUser.name);
+                }
+                return userGroups.includes(a.groupId);
+            })
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
         if(relevantActivities.length === 0) {
@@ -2329,19 +2558,28 @@
             const date = new Date(act.timestamp);
             const dateOptions = { month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true };
             
-            const isClickable = act.details ? true : false;
-            const cursorStyle = isClickable ? 'cursor: pointer;' : '';
-            const clickHandler = isClickable ? `onclick="showActivityDetails('${act.id}')"` : '';
+            const isClickable = act.details && !window.isActivityDeleteModeActive ? true : false;
+            let cursorStyle = isClickable ? 'cursor: pointer;' : '';
+            if (window.isActivityDeleteModeActive) cursorStyle = 'cursor: pointer;';
+            
+            const clickHandler = window.isActivityDeleteModeActive ? `onclick="window.toggleActivityCheckbox('${act.id}')"` : (isClickable ? `onclick="window.showActivityDetails('${act.id}')"` : '');
             const indicatorIcon = isClickable ? `<i class="fas fa-chevron-right" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 12px;"></i>` : '';
+            const checkboxHTML = window.isActivityDeleteModeActive ? `<input type="checkbox" class="activity-delete-checkbox" id="chk-act-${act.id}" value="${act.id}" onclick="event.stopPropagation()" onchange="window.updateActivitySelectAllState()" style="margin-right: 12px; pointer-events: auto; flex-shrink: 0;">` : '';
 
             list.innerHTML += `
-                <div class="expense-item" style="flex-direction: column; align-items: flex-start; gap: 4px; border-left: 4px solid var(--primary); position: relative; ${cursorStyle}" ${clickHandler}>
-                    <div style="font-size: 14px; color: var(--text-main); font-weight: 500; padding-right: 20px;">${act.text}</div>
-                    <div style="font-size: 11px; color: var(--text-muted);">${act.groupName} • ${date.toLocaleString('en-US', dateOptions)}</div>
+                <div class="expense-item" style="align-items: center; border-left: 4px solid var(--primary); position: relative; ${cursorStyle}" ${clickHandler}>
+                    ${checkboxHTML}
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px; flex-grow: 1;">
+                        <div style="font-size: 14px; color: var(--text-main); font-weight: 500; padding-right: 20px;">${act.text}</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">${act.groupName} • ${date.toLocaleString('en-US', dateOptions)}</div>
+                    </div>
                     ${indicatorIcon}
                 </div>
             `;
         });
+        
+        const selectAllCb = document.getElementById('selectAllActivities');
+        if(selectAllCb) selectAllCb.checked = false;
     };
 </script>
 </body>
