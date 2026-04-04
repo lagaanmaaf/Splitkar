@@ -168,7 +168,9 @@
        ========================================= */
     .group-display-container, .expenses-list-wrapper { flex: 1; display: flex; flex-direction: column; width: 100%; overflow-y: auto; padding-bottom: 60px; }
     .no-groups, .no-expenses-message { color: var(--text-muted); text-align: center; margin: auto; font-size: 16px; padding: 20px; }
-    .group-list, .expenses-list { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+    
+    /* Added padding so transform hover doesn't cut off borders */
+    .group-list, .expenses-list { display: flex; flex-direction: column; gap: 12px; width: 100%; padding: 4px; box-sizing: border-box; }
 
     .group-item, .expense-item, .split-option-box, .split-payer-info, .two-member-split-list-item, .expense-detail-share-item {
       background-color: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-sm);
@@ -182,7 +184,10 @@
     .expense-info-wrapper { display: flex; align-items: center; gap: 12px; flex-grow: 1; overflow: hidden; }
     .expense-details-text { display: flex; flex-direction: column; overflow: hidden; }
     .expense-info { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .expense-date-time { display: flex; flex-direction: column; font-size: 11px; color: var(--text-muted); align-items: flex-end; flex-shrink: 0; min-width: 60px; }
+    
+    /* Date and Time aligned to extreme left */
+    .expense-date-time { display: flex; flex-direction: column; font-size: 11px; color: var(--text-muted); align-items: flex-start; text-align: left; flex-shrink: 0; min-width: 45px; }
+    
     .expense-amount { font-size: 16px; font-weight: 700; flex-shrink: 0; }
     .owes-you { color: var(--primary); }
     .you-owe { color: var(--secondary); }
@@ -237,6 +242,17 @@
       border-radius: var(--radius-lg) var(--radius-lg) 0 0; position: absolute; bottom: 0; left: 0;
       box-sizing: border-box; padding: 24px 24px 40px 24px; box-shadow: var(--shadow-lg);
     }
+    
+    /* Activity Detail Specific */
+    .activity-detail-modal {
+      background: var(--bg-surface); padding: 32px; border-radius: var(--radius-lg); width: 90%; max-width: 400px; box-shadow: var(--shadow-lg); text-align: left;
+    }
+    .activity-detail-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-light); font-size: 14px; align-items: center; }
+    .activity-detail-row:last-child { border-bottom: none; }
+    .activity-detail-label { color: var(--text-muted); }
+    .activity-detail-value { font-weight: 500; color: var(--text-main); text-align: right; }
+    .activity-detail-old { text-decoration: line-through; color: var(--secondary); font-size: 12px; display: block; margin-bottom: 2px; }
+
     .confirm-modal-buttons { display: flex; gap: 12px; margin-top: 24px; }
     .confirm-modal-btn { flex: 1; }
 
@@ -660,6 +676,15 @@
     </div>
   </div>
 
+  <!-- Activity Detail Modal -->
+  <div class="modal-overlay" id="activityDetailModalOverlay">
+    <div class="activity-detail-modal">
+      <h2 style="margin-top: 0; text-align: center; font-size: 18px;">Edit Details</h2>
+      <div id="activityDetailContent"></div>
+      <button class="cancel-btn" style="margin-top: 24px;" onclick="closeActivityDetailModal()">Close</button>
+    </div>
+  </div>
+
   <!-- Custom Input Modal -->
   <div class="confirm-modal-overlay" id="customInputModalOverlay">
     <div class="confirm-modal-content">
@@ -691,7 +716,7 @@
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // Standard Firebase Config initialization with fallback to user's specified DB for offline/external use.
+    // Standard Firebase Config initialization
     const fallbackConfig = {
         apiKey: "AIzaSyCxprFyqxdNWRTtmXkn_lCK72k_d3hgKTM",
         authDomain: "splitkar-2c431.firebaseapp.com",
@@ -712,15 +737,14 @@
 
     // Global State
     window.appState = {
-        user: null, // Holds profile info
+        user: null, 
         groups: [],
         activities: []
     };
 
     let isInitialized = false;
 
-    // Authentication Setup 
-    // We authenticate with Firebase automatically, but user identity is stored in custom "users" collection
+    // Authentication Setup
     const initAuth = async () => {
         try {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -729,7 +753,6 @@
                 await signInAnonymously(auth);
             }
 
-            // Once Firebase connects, check App-Level Auth locally
             const savedPhone = localStorage.getItem('splitkar_logged_in_phone');
             if(savedPhone) {
                 const userDocSnap = await getDoc(doc(publicCollection('users'), savedPhone));
@@ -886,12 +909,13 @@
         await deleteDoc(doc(publicCollection('groups'), groupId));
     };
 
-    window.logActivity = async (groupId, groupName, text) => {
+    window.logActivity = async (groupId, groupName, text, details = null) => {
         const activityId = window.generateUUID();
         const activity = {
             id: activityId, groupId: groupId, groupName: groupName, text: text,
             timestamp: new Date().toISOString(), user: window.appState.user ? window.appState.user.name : "Unknown"
         };
+        if (details) activity.details = details;
         await setDoc(doc(publicCollection('activities'), activityId), activity);
     };
 
@@ -969,7 +993,7 @@
     // ==========================================
     
     const categoryLogos = {
-        'food': 'food.png', 'electricity': 'electricity.png', 'trip': 'trip.png',
+        'food': 'food.png', 'electricity': 'electricity.png', 'trip': 'trip.png', 'travel': 'trip.png',
         'house rent': 'rent.png', 'home rent': 'rent.png', 'rent': 'rent.png',
         'water bill': 'water.png', 'alcohol': 'alcohol.png', 'shopping': 'shopping.png',
         'groceries': 'groceries.png', 'petrol': 'petrol.png', 'fuel': 'petrol.png',
@@ -1073,6 +1097,7 @@
         document.getElementById("groupInfoModalOverlay").style.display = "none";
         document.getElementById("customInputModalOverlay").style.display = "none";
         document.getElementById("profileMenuModalOverlay").style.display = "none";
+        document.getElementById("activityDetailModalOverlay").style.display = "none";
     }
 
     function switchTab(tabName) {
@@ -1439,9 +1464,7 @@
       
       const currentUserName = window.appState.user.name;
       
-      // Removed manual add members. Groups start with just the creator.
       const finalMembers = [currentUserName]; 
-
       const groupCode = String.fromCharCode(65+Math.floor(Math.random()*26)) + String.fromCharCode(65+Math.floor(Math.random()*26)) + Math.floor(10000 + Math.random() * 90000);
 
       const newGroup = { 
@@ -1548,6 +1571,16 @@
         if (isEdit) {
             const expenseIndex = currentGroup.expenses.findIndex(e => e.id === currentEditingExpenseId);
             if (expenseIndex !== -1) {
+                const oldExp = currentGroup.expenses[expenseIndex];
+                const editDetails = {
+                    name: oldExp.name !== expenseName ? { old: oldExp.name, new: expenseName } : null,
+                    amount: oldExp.amount !== expenseAmount ? { old: oldExp.amount, new: expenseAmount } : null,
+                    payer: oldExp.payer !== payer ? { old: oldExp.payer, new: payer } : null,
+                    splitType: oldExp.splitType !== splitType ? { old: oldExp.splitType, new: splitType } : null
+                };
+                
+                const hasChanges = Object.values(editDetails).some(v => v !== null);
+
                 currentGroup.expenses[expenseIndex].name = expenseName;
                 currentGroup.expenses[expenseIndex].amount = expenseAmount;
                 currentGroup.expenses[expenseIndex].payer = payer;
@@ -1555,8 +1588,9 @@
                 currentGroup.expenses[expenseIndex].splitShares = splitShares;
                 currentGroup.expenses[expenseIndex].splitPercentages = splitPercentages;
                 currentGroup.expenses[expenseIndex].splitMembers = finalSplitMembers;
+
+                window.logActivity(currentGroupId, currentGroup.name, `${currentUser.name} edited the expense "${expenseName}".`, hasChanges ? editDetails : null);
             }
-            window.logActivity(currentGroupId, currentGroup.name, `${currentUser.name} edited the expense "${expenseName}".`);
         } else {
             const newExpense = {
                 id: generateUUID(), name: expenseName, amount: expenseAmount, payer: payer,
@@ -1564,7 +1598,7 @@
                 splitShares: splitShares, splitPercentages: splitPercentages, splitMembers: finalSplitMembers 
             };
             currentGroup.expenses.push(newExpense);
-            window.logActivity(currentGroupId, currentGroup.name, `${payer} added an expense "${expenseName}" for ₹${expenseAmount}.`);
+            window.logActivity(currentGroupId, currentGroup.name, `${payer} added an expense "${expenseName}" for ₹${expenseAmount.toFixed(2)}.`);
         }
 
         await window.saveGroups([currentGroup]);
@@ -1587,7 +1621,7 @@
       if (confirmDelete) {
         group.expenses = group.expenses.filter(e => e.id !== currentEditingExpenseId);
         await window.saveGroups([group]);
-        window.logActivity(currentGroupId, group.name, `${window.appState.user.name} deleted expense "${expense.name}".`);
+        window.logActivity(currentGroupId, group.name, `${window.appState.user.name} deleted expense "${expense.name}" (₹${expense.amount.toFixed(2)}).`);
         cancelEditExpense();
       }
     }
@@ -1619,17 +1653,51 @@
             const memberList = document.getElementById('groupInfoModalList');
             memberList.innerHTML = '<h3 style="font-size:16px; margin: 10px 0;">Members</h3>';
             const currentUser = window.appState.user;
+            
             group.members.forEach(memberName => {
                 const li = document.createElement('li');
                 li.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding: 12px 0; border-bottom: 1px solid var(--border-light);";
                 li.innerHTML = `
                     <span>${memberName} ${memberName === currentUser.name ? '<span style="color:var(--text-muted); font-size:12px;">(You)</span>' : ''}</span>
+                    <i class="fas fa-trash-alt" style="color: var(--secondary); cursor: pointer; padding: 8px;" onclick="removeMemberFromGroup('${group.id}', '${memberName}')" title="Remove Member"></i>
                 `;
                 memberList.appendChild(li);
             });
             document.getElementById('groupInfoModalOverlay').style.display = 'flex';
         }
     }
+
+    // Global function to remove any member from the group
+    window.removeMemberFromGroup = async (groupId, memberName) => {
+        const confirmDel = await showConfirmModal(`Are you sure you want to remove ${memberName} from this group?`);
+        if (confirmDel) {
+            const groups = window.getGroups();
+            const group = groups.find(g => g.id === groupId);
+            if (group) {
+                group.members = group.members.filter(m => m !== memberName);
+                
+                // Update expenses to prevent calculation bugs from missing members
+                group.expenses.forEach(expense => {
+                    if (expense.members) expense.members = expense.members.filter(m => m !== memberName);
+                    if (expense.splitMembers) expense.splitMembers = expense.splitMembers.filter(m => m !== memberName);
+                    if (expense.splitShares && expense.splitShares[memberName] !== undefined) delete expense.splitShares[memberName];
+                    if (expense.splitPercentages && expense.splitPercentages[memberName] !== undefined) delete expense.splitPercentages[memberName];
+                });
+
+                await window.saveGroups([group]);
+                window.logActivity(groupId, group.name, `${window.appState.user.name} removed ${memberName} from the group.`);
+                
+                // If user removed themselves, redirect them to main screen
+                if (memberName === window.appState.user.name) {
+                    closeGroupInfoModal();
+                    showGroupSection();
+                } else {
+                    showGroupInfo(); // Refresh modal
+                    renderExpenses(groupId); // Refresh background expense list
+                }
+            }
+        }
+    };
 
     function resetExpenseSplitDetails() {
         currentExpenseSplitDetails = { payer: '', splitType: 'equally', shares: {}, percentages: {} };
@@ -1778,7 +1846,7 @@
         if (confirmDelete) {
             group.expenses = group.expenses.filter(e => e.id !== currentExpenseDetailId);
             await window.saveGroups([group]);
-            window.logActivity(currentGroupId, group.name, `${window.appState.user.name} deleted expense "${expense.name}".`);
+            window.logActivity(currentGroupId, group.name, `${window.appState.user.name} deleted expense "${expense.name}" (₹${expense.amount.toFixed(2)}).`);
             closeExpenseDetailPage();
         }
     }
@@ -2205,6 +2273,41 @@
         }
     }
 
+    window.showActivityDetails = (activityId) => {
+        const act = window.appState.activities.find(a => a.id === activityId);
+        if(!act || !act.details) return;
+
+        const content = document.getElementById('activityDetailContent');
+        content.innerHTML = '';
+        
+        const formatSplit = (type) => {
+            if(type === 'equally') return 'Equally';
+            if(type === 'unequally') return 'Unequally';
+            if(type === 'percentage') return 'Percentage';
+            if(type === 'fullAmount') return 'Full Amount';
+            return type;
+        };
+
+        if(act.details.name) {
+            content.innerHTML += `<div class="activity-detail-row"><span class="activity-detail-label">Name</span><div class="activity-detail-value"><span class="activity-detail-old">${act.details.name.old}</span>${act.details.name.new}</div></div>`;
+        }
+        if(act.details.amount) {
+            content.innerHTML += `<div class="activity-detail-row"><span class="activity-detail-label">Amount</span><div class="activity-detail-value"><span class="activity-detail-old">₹${act.details.amount.old.toFixed(2)}</span>₹${act.details.amount.new.toFixed(2)}</div></div>`;
+        }
+        if(act.details.payer) {
+            content.innerHTML += `<div class="activity-detail-row"><span class="activity-detail-label">Payer</span><div class="activity-detail-value"><span class="activity-detail-old">${act.details.payer.old}</span>${act.details.payer.new}</div></div>`;
+        }
+        if(act.details.splitType) {
+            content.innerHTML += `<div class="activity-detail-row"><span class="activity-detail-label">Split</span><div class="activity-detail-value"><span class="activity-detail-old">${formatSplit(act.details.splitType.old)}</span>${formatSplit(act.details.splitType.new)}</div></div>`;
+        }
+
+        document.getElementById('activityDetailModalOverlay').style.display = 'flex';
+    };
+
+    window.closeActivityDetailModal = () => {
+        document.getElementById('activityDetailModalOverlay').style.display = 'none';
+    };
+
     window.renderActivities = () => {
         const list = document.getElementById('activityList');
         list.innerHTML = '';
@@ -2225,10 +2328,17 @@
         relevantActivities.forEach(act => {
             const date = new Date(act.timestamp);
             const dateOptions = { month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true };
+            
+            const isClickable = act.details ? true : false;
+            const cursorStyle = isClickable ? 'cursor: pointer;' : '';
+            const clickHandler = isClickable ? `onclick="showActivityDetails('${act.id}')"` : '';
+            const indicatorIcon = isClickable ? `<i class="fas fa-chevron-right" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 12px;"></i>` : '';
+
             list.innerHTML += `
-                <div class="expense-item" style="flex-direction: column; align-items: flex-start; gap: 4px; border-left: 4px solid var(--primary);">
-                    <div style="font-size: 14px; color: var(--text-main); font-weight: 500;">${act.text}</div>
+                <div class="expense-item" style="flex-direction: column; align-items: flex-start; gap: 4px; border-left: 4px solid var(--primary); position: relative; ${cursorStyle}" ${clickHandler}>
+                    <div style="font-size: 14px; color: var(--text-main); font-weight: 500; padding-right: 20px;">${act.text}</div>
                     <div style="font-size: 11px; color: var(--text-muted);">${act.groupName} • ${date.toLocaleString('en-US', dateOptions)}</div>
+                    ${indicatorIcon}
                 </div>
             `;
         });
