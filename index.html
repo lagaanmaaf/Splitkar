@@ -2293,22 +2293,29 @@ window.removeGroupMember = function(userId) {
   const msg = isMe ? `Leave "${grp.name}"? You will no longer see this group in your active list.` : `Remove ${u.name} from "${grp.name}"?`;
 
   showConfirm('Remove Member', msg).then(async ok => {
-    if (!ok) return;
-    const newMemberIds = grp.memberIds.filter(id => id !== userId);
-    
-    // Track removed members so they can visually see the removal banner
-    const removedMembers = grp.removedMembers ? [...grp.removedMembers] : [];
-    if (!removedMembers.includes(userId)) removedMembers.push(userId);
-    
-    try {
-      await fsUpdateGroup(grp.id, { memberIds: newMemberIds, removedMembers });
+        if (!ok) return;
+        const newMemberIds = grp.memberIds.filter(id => id !== userId);
+        
+        // Track removed members ONLY if someone else kicked them out
+        const removedMembers = grp.removedMembers ? [...grp.removedMembers] : [];
+        if (!isMe && !removedMembers.includes(userId)) {
+            removedMembers.push(userId);
+        }
+        
+        try {
+          await fsUpdateGroup(grp.id, { memberIds: newMemberIds, removedMembers });
 
-      const actData = {
-        type: 'member_added', groupId: grp.id, actorId: state.currentUser.id,
-        desc: `${state.currentUser.name} removed ${u.name} from the group.`,
-        amount: null, date: new Date().toISOString()
-      };
-      await fsAddActivity(actData);
+          // Show a better activity message depending on if they left or were kicked
+          const actDesc = isMe 
+            ? `${state.currentUser.name} left the group.` 
+            : `${state.currentUser.name} removed ${u.name} from the group.`;
+
+          const actData = {
+            type: 'member_added', groupId: grp.id, actorId: state.currentUser.id,
+            desc: actDesc,
+            amount: null, date: new Date().toISOString()
+          };
+          await fsAddActivity(actData);
       
       showToast(`${isMe ? 'Left' : 'Removed'} ${isMe ? 'group' : u.name}`);
       
