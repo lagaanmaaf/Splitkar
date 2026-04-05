@@ -2312,11 +2312,14 @@ window.removeGroupMember = function(userId) {
       
       showToast(`${isMe ? 'Left' : 'Removed'} ${isMe ? 'group' : u.name}`);
       
-      // If it was myself, navigate out completely. Real-time sync handles the rest.
+      // If it was myself, navigate out completely and update UI instantly.
       if (isMe) {
         closeModal('modal-group-info');
         state.currentGroupId = null;
+        // Instantly remove it from local state so it disappears without delay
+        state.groups = state.groups.filter(g => g.id !== grp.id);
         showPage('page-groups', false);
+        renderGroups(); // Refresh the list immediately
       }
     } catch(e) {
       showToast('Error removing member');
