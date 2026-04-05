@@ -717,8 +717,11 @@
         </button>
       </div>
     </div>
-    <div id="group-delete-actions" class="action-bar" style="display:none;">
-      <div style="display:flex; align-items:center; gap:8px;"></div>
+    <div id="group-delete-actions" class="action-bar" style="display:none; margin-top: 10px; border-top: 1px solid var(--border);">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" id="grp-select-all" class="del-cb" onchange="toggleSelectAllGroups(this)">
+        <label for="grp-select-all" style="font-size:14px; font-weight:600; color:var(--text); cursor:pointer;">Select All</label>
+      </div>
       <div style="display:flex; gap:8px;">
         <button class="btn btn-ghost btn-sm" onclick="toggleDeleteGroupMode()" style="width:auto;">Cancel</button>
         <button class="btn btn-danger btn-sm" onclick="deleteSelectedGroups()" style="width:auto;">Delete</button>
@@ -2351,6 +2354,10 @@ window.deleteSelectedGroups = function() {
       showToast('Error deleting groups');
     }
   });
+}
+
+window.toggleSelectAllGroups = function(cb) {
+  document.querySelectorAll('.grp-del-cb').forEach(el => el.checked = cb.checked);
 }
 
 window.toggleDeleteActivityMode = function() {
