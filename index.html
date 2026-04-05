@@ -617,7 +617,7 @@
 <div id="app" class="nav-hidden">
 
   <!-- LANDING PAGE -->
-  <div class="page active" id="page-landing" style="padding: 0; background: white;">
+  <div class="page" id="page-landing" style="padding: 0; background: white;">
     <div style="flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #ffffff;">
        <img src="splitkar.png" alt="Splitkar" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.src=''; this.alt='Splitkar App Logo'; this.style.padding='20px';"/>
     </div>
@@ -1444,23 +1444,33 @@ async function loadAllData() {
 // ===================================================================
 async function initAuth() {
   const savedUserId = localStorage.getItem('splitEaseUserId');
+  
   if (savedUserId) {
     try {
       const user = await fsGetUserById(savedUserId);
       if (user) {
         state.currentUser = user;
         if (!state.users.find(u => u.id === user.id)) state.users.push(user);
-        await loadAllData();
+        
+        // 1. Load the database data first
+        await loadAllData(); 
+        
+        // 2. Set the dashboard as the active page immediately (still behind the loader)
+        showPage('page-home', false); 
+        renderDashboard();
+        
+        // 3. Now that everything is ready, hide the loader
         hideLoadingOverlay();
-        navigate('home');
         return;
       }
     } catch(e) {
       console.error('Auth restore error', e);
     }
   }
-  hideLoadingOverlay();
+  
+  // If no user is logged in:
   showPage('page-landing', true);
+  hideLoadingOverlay();
 }
 
 window.goToAuth = function() {
