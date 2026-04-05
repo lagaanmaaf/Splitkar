@@ -884,6 +884,13 @@
         <input class="modern-input-field" id="exp-amount" type="number" step="0.01" placeholder="0.00" />
       </div>
 
+      <div class="modern-input-row">
+        <div class="modern-input-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        </div>
+        <input class="modern-input-field" id="exp-date" type="date" />
+      </div>
+
       <button id="btn-split-selector" class="btn-split-selector" style="display:none;" onclick="openSplitDetailsPage()">
         Paid by You & Split Equally
       </button>
@@ -1915,6 +1922,12 @@ window.showAddExpensePage = function() {
   const isTwoMember = grp.memberIds.length === 2;
   document.getElementById('exp-desc').value = '';
   document.getElementById('exp-amount').value = '';
+  
+  // Set default date to today's local date
+  const today = new Date();
+  const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+  document.getElementById('exp-date').value = localDate;
+
   if (isTwoMember) {
     expSplit.payerId = state.currentUser.id;
     expSplit.splitType = 'equally';
@@ -2518,9 +2531,13 @@ window.addExpense = async function() {
   }
   
   try {
+    // Read the date input, fallback to current time if empty
+    const dateInput = document.getElementById('exp-date').value;
+    const expenseDate = dateInput ? new Date(dateInput).toISOString() : new Date().toISOString();
+
     const expData = {
       groupId, desc, amount, category, paidBy, splitType,
-      splitAmong, shares, percentages, date: new Date().toISOString()
+      splitAmong, shares, percentages, date: expenseDate
     };
     await fsAddExpense(expData);
     
@@ -3026,6 +3043,17 @@ window.editCurrentExpense = function() {
   document.getElementById('btn-save-expense').onclick = updateExpense;
   document.getElementById('exp-desc').value = exp.desc;
   document.getElementById('exp-amount').value = exp.amount;
+  
+  // Populate the existing date
+  if (exp.date) {
+    const expDateObj = new Date(exp.date);
+    const localExpDate = new Date(expDateObj.getTime() - (expDateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    document.getElementById('exp-date').value = localExpDate;
+  } else {
+    const today = new Date();
+    document.getElementById('exp-date').value = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+  }
+
   expSplit.payerId = exp.paidBy;
   expSplit.splitType = exp.splitType === 'fullAmount' ? 'fullAmount' : exp.splitType;
   expSplit.splitAmong = exp.splitAmong ? [...exp.splitAmong] : [...grp.memberIds];
@@ -3089,7 +3117,11 @@ window.updateExpense = async function() {
   }
   
   try {
-    const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages };
+    // Read updated date
+    const dateInput = document.getElementById('exp-date').value;
+    const expenseDate = dateInput ? new Date(dateInput).toISOString() : new Date().toISOString();
+
+    const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate };
     await updateDoc(doc(db, 'expenses', editingExpenseId), updatedData);
     
     const actData = {
