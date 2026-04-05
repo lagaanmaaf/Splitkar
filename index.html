@@ -1362,11 +1362,10 @@ function hideLoadingOverlay() {
 //  UNIQUE GROUP CODE GENERATION
 // ===================================================================
 async function generateUniqueGroupCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // removed ambiguous chars
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code, exists;
   do {
     code = Array.from({length: 6}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-    // Check if this code already exists in Firestore
     const q = query(collection(db, 'groups'), where('code', '==', code));
     const snap = await getDocs(q);
     exists = !snap.empty;
@@ -1378,7 +1377,6 @@ async function generateUniqueGroupCode() {
 //  FIRESTORE DATA LAYER
 // ===================================================================
 
-// --- Users ---
 async function fsGetUser(phone) {
   const q = query(collection(db, 'users'), where('phone', '==', phone));
   const snap = await getDocs(q);
@@ -1406,7 +1404,6 @@ async function fsGetUserById(userId) {
   return { id: docSnap.id, ...docSnap.data() };
 }
 
-// Load all users that share groups with current user
 async function loadAllRelatedUsers() {
   if (!state.currentUser) return;
   const allMemberIds = new Set([state.currentUser.id]);
@@ -1414,7 +1411,7 @@ async function loadAllRelatedUsers() {
   
   const users = [];
   for (const uid of allMemberIds) {
-    if (state.users.find(u => u.id === uid)) continue; // already loaded
+    if (state.users.find(u => u.id === uid)) continue;
     const u = await fsGetUserById(uid);
     if (u) users.push(u);
   }
@@ -1425,7 +1422,6 @@ async function loadAllRelatedUsers() {
   });
 }
 
-// --- Groups ---
 async function fsGetUserGroups(userId) {
   const q = query(collection(db, 'groups'), where('memberIds', 'array-contains', userId));
   const snap = await getDocs(q);
@@ -1452,7 +1448,6 @@ async function fsGetGroupByCode(code) {
   return { id: snap.docs[0].id, ...snap.docs[0].data() };
 }
 
-// --- Expenses ---
 async function fsGetGroupExpenses(groupId) {
   const q = query(collection(db, 'expenses'), where('groupId', '==', groupId));
   const snap = await getDocs(q);
@@ -1468,7 +1463,6 @@ async function fsDeleteExpense(expId) {
   await deleteDoc(doc(db, 'expenses', expId));
 }
 
-// --- Settlements ---
 async function fsGetGroupSettlements(groupId) {
   const q = query(collection(db, 'settlements'), where('groupId', '==', groupId));
   const snap = await getDocs(q);
@@ -1480,7 +1474,6 @@ async function fsAddSettlement(data) {
   return { id: ref.id, ...data };
 }
 
-// --- Activity ---
 async function fsGetGroupActivity(groupId) {
   const q = query(collection(db, 'activity'), where('groupId', '==', groupId));
   const snap = await getDocs(q);
@@ -1496,21 +1489,13 @@ async function fsDeleteActivity(actId) {
   await deleteDoc(doc(db, 'activity', actId));
 }
 
-// Load all data for current user's groups
 async function loadAllData() {
   if (!state.currentUser) return;
-  
-  // Load groups
   state.groups = await fsGetUserGroups(state.currentUser.id);
-  
-  // Load related users
   await loadAllRelatedUsers();
-  
-  // Load expenses, settlements, activity for all groups
   state.expenses = [];
   state.settlements = [];
   state.activity = [];
-  
   for (const grp of state.groups) {
     const [exps, setts, acts] = await Promise.all([
       fsGetGroupExpenses(grp.id),
@@ -1528,22 +1513,15 @@ async function loadAllData() {
 // ===================================================================
 async function initAuth() {
   const savedUserId = localStorage.getItem('splitEaseUserId');
-  
   if (savedUserId) {
     try {
       const user = await fsGetUserById(savedUserId);
       if (user) {
         state.currentUser = user;
         if (!state.users.find(u => u.id === user.id)) state.users.push(user);
-        
-        // 1. Load the database data first
-        await loadAllData(); 
-        
-        // 2. Set the dashboard as the active page immediately (still behind the loader)
-        showPage('page-home', false); 
+        await loadAllData();
+        showPage('page-home', false);
         renderDashboard();
-        
-        // 3. Now that everything is ready, hide the loader
         hideLoadingOverlay();
         return;
       }
@@ -1551,8 +1529,6 @@ async function initAuth() {
       console.error('Auth restore error', e);
     }
   }
-  
-  // If no user is logged in:
   showPage('page-landing', true);
   hideLoadingOverlay();
 }
@@ -1573,12 +1549,10 @@ window.handleLogin = async function() {
   const phone = document.getElementById('login-phone').value.trim();
   const pass = document.getElementById('login-pass').value;
   if (!phone || !pass) { showToast("Enter mobile and password"); return; }
-  
   try {
     const user = await fsGetUser(phone);
     if (!user) { showToast("User not found"); return; }
     if (user.password && user.password !== pass) { showToast("Incorrect password"); return; }
-    
     state.currentUser = user;
     if (!state.users.find(u => u.id === user.id)) state.users.push(user);
     localStorage.setItem('splitEaseUserId', user.id);
@@ -1597,15 +1571,12 @@ window.handleSignUp = async function() {
   const phone = document.getElementById('signup-phone').value.trim();
   const pass = document.getElementById('signup-pass').value;
   if (!name || !phone || !pass) { showToast("All fields are required"); return; }
-  
   try {
     const existing = await fsGetUser(phone);
     if (existing) { showToast("Mobile already registered"); return; }
-    
     const colorIndex = Math.floor(Math.random() * COLORS.length);
     const color = COLORS[colorIndex];
     const newUser = await fsCreateUser({ name, phone, password: pass, color });
-    
     state.currentUser = newUser;
     state.users.push(newUser);
     localStorage.setItem('splitEaseUserId', newUser.id);
@@ -1740,11 +1711,9 @@ function calcDashboard() {
 function showPage(pageId, hideNav = false) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  
   document.getElementById(pageId).classList.add('active');
   const navId = 'nav-' + pageId.replace('page-', '');
   if(document.getElementById(navId)) document.getElementById(navId).classList.add('active');
-  
   const bottomNavEl = document.querySelector('.bottom-nav');
   if(hideNav) {
     document.getElementById('app').classList.add('nav-hidden');
@@ -1760,39 +1729,47 @@ window.navigate = async function(page) {
   state.deleteGroupMode = false;
   state.deleteActivityMode = false;
   state.deleteFriendMode = false;
-  
   const gas = document.getElementById('group-delete-actions');
   if (gas) gas.style.display = 'none';
   const aas = document.getElementById('activity-delete-actions');
   if (aas) aas.style.display = 'none';
   const fas = document.getElementById('friend-delete-actions');
   if (fas) fas.style.display = 'none';
-
-  // Reload data on tab navigate to stay in sync
   await loadAllData();
   showPage('page-' + page, false);
   const renders = { home: renderDashboard, groups: renderGroups, activity: renderActivity, friends: renderFriends };
   if (renders[page]) renders[page]();
 }
 
+// =====================================================================
+//  FIX 2: openGroupDetail — fetch fresh group doc to get removedMembers
+// =====================================================================
 window.openGroupDetail = async function(groupId) {
   if(state.deleteGroupMode) return;
   state.currentGroupId = groupId;
-  // Load fresh data for this group
   const [exps, setts, acts] = await Promise.all([
     fsGetGroupExpenses(groupId),
     fsGetGroupSettlements(groupId),
     fsGetGroupActivity(groupId)
   ]);
-  // Replace in state
   state.expenses = state.expenses.filter(e => e.groupId !== groupId);
   state.expenses.push(...exps);
   state.settlements = state.settlements.filter(s => s.groupId !== groupId);
   state.settlements.push(...setts);
   state.activity = state.activity.filter(a => a.groupId !== groupId);
   state.activity.push(...acts);
-  // Load any new members
   await loadAllRelatedUsers();
+
+  // Fetch latest group data to get removedMembers field
+  try {
+    const freshSnap = await getDoc(doc(db, 'groups', groupId));
+    if (freshSnap.exists()) {
+      const idx = state.groups.findIndex(g => g.id === groupId);
+      if (idx !== -1) state.groups[idx] = { id: groupId, ...freshSnap.data() };
+      else state.groups.push({ id: groupId, ...freshSnap.data() });
+    }
+  } catch(e) {}
+
   showPage('page-group-detail', true);
   renderGroupDetail(groupId);
   document.getElementById('group-detail-fab').style.display = 'flex';
@@ -1832,35 +1809,27 @@ window.closeJoinGroupPage = function() {
 window.joinGroupByCode = async function() {
   const code = document.getElementById('join-code-input').value.trim().toUpperCase();
   if (code.length !== 6) { showToast('Enter a valid 6-character code'); return; }
-  
   try {
     const grp = await fsGetGroupByCode(code);
     if (!grp) { showToast('Group not found. Check the code.'); return; }
     if (grp.memberIds.includes(state.currentUser.id)) { showToast('You are already in this group!'); return; }
-    
     const updatedMemberIds = [...grp.memberIds, state.currentUser.id];
     await fsUpdateGroup(grp.id, { memberIds: updatedMemberIds });
     grp.memberIds = updatedMemberIds;
-    
-    // Add activity
     const actData = {
-      type: 'member_added',
-      groupId: grp.id,
-      actorId: state.currentUser.id,
+      type: 'member_added', groupId: grp.id, actorId: state.currentUser.id,
       desc: `${state.currentUser.name} joined the group via invite code.`,
-      amount: null,
-      date: new Date().toISOString()
+      amount: null, date: new Date().toISOString()
     };
     const newAct = await fsAddActivity(actData);
-    
-    // Update local state
     if (!state.groups.find(g => g.id === grp.id)) state.groups.push(grp);
     else {
       const existing = state.groups.find(g => g.id === grp.id);
       existing.memberIds = updatedMemberIds;
     }
     state.activity.unshift(newAct);
-    
+    // FIX 2: Load any new members into state.users immediately
+    await loadAllRelatedUsers();
     showToast(`Joined "${grp.name}"! 🎉`);
     closeJoinGroupPage();
   } catch(e) {
@@ -1892,11 +1861,9 @@ window.showAddExpensePage = function() {
   resetExpSplit();
   const grp = groupById(state.currentGroupId);
   if (!grp) return;
-
   const isTwoMember = grp.memberIds.length === 2;
   document.getElementById('exp-desc').value = '';
   document.getElementById('exp-amount').value = '';
-
   if (isTwoMember) {
     expSplit.payerId = state.currentUser.id;
     expSplit.splitType = 'equally';
@@ -1916,7 +1883,6 @@ window.showAddExpensePage = function() {
 }
 
 window.closeAddExpensePage = function() {
-  // Reset edit mode if active
   if (editingExpenseId) {
     editingExpenseId = null;
     document.getElementById('add-expense-page-title').textContent = 'Add Expense';
@@ -1941,7 +1907,7 @@ function updateSplitSelectorText() {
   const me = state.currentUser;
   const otherId = grp.memberIds.find(id => id !== me.id);
   const other = userById(otherId);
-  let text = "Paid by You & Split Equally"; 
+  let text = "Paid by You & Split Equally";
   if (expSplit.payerId === me.id) {
     if (expSplit.splitType === 'equally') text = "Paid by You & Split Equally";
     if (expSplit.splitType === 'fullAmount') text = "You are owed the full amount";
@@ -1964,17 +1930,14 @@ function renderSplitDetailsOptions() {
   const otherId = grp.memberIds.find(id => id !== me.id);
   const other = userById(otherId);
   if (!other) return;
-
   const amount = parseFloat(document.getElementById('exp-amount').value) || 0;
   const half = amount / 2;
-
   const options = [
     { type: 'equally', payerId: me.id, title: 'You paid, split equally', subPre: `${other.name} owes you`, subAmt: `₹${half.toFixed(2)}`, amtColor: 'var(--primary)' },
     { type: 'fullAmount', payerId: me.id, title: 'You are owed the full amount', subPre: `${other.name} owes you`, subAmt: `₹${amount.toFixed(2)}`, amtColor: 'var(--primary)' },
     { type: 'equally', payerId: otherId, title: `${other.name} paid, split equally`, subPre: `You owe ${other.name}`, subAmt: `₹${half.toFixed(2)}`, amtColor: 'var(--borrowed)' },
     { type: 'fullAmount', payerId: otherId, title: `${other.name} is owed the full amount`, subPre: `You owe ${other.name}`, subAmt: `₹${amount.toFixed(2)}`, amtColor: 'var(--borrowed)' },
   ];
-
   const container = document.getElementById('split-details-list');
   container.innerHTML = options.map((o) => {
     const isSelected = expSplit.payerId === o.payerId && expSplit.splitType === o.type;
@@ -2012,7 +1975,6 @@ window.showPayerSelectionPage = function() {
   if (!grp) return;
   expSplitCallerPage = document.getElementById('page-adjust-split').classList.contains('active')
     ? 'page-adjust-split' : 'page-add-expense';
-
   const container = document.getElementById('payer-options-list');
   container.innerHTML = grp.memberIds.map(uid => {
     const u = userById(uid);
@@ -2074,7 +2036,6 @@ function renderAdjustSplitContent(tab) {
   const members = grp.memberIds;
   const amount = parseFloat(document.getElementById('exp-amount').value) || expSplit._amount || 0;
   const container = document.getElementById('split-tab-content');
-
   if (tab === 'equally') {
     if (expSplit.splitAmong.length === 0) expSplit.splitAmong = [...members];
     const selectedIds = expSplit.splitAmong;
@@ -2159,9 +2120,6 @@ window.toggleEquallyMember = function(uid) {
   const idx = expSplit.splitAmong.indexOf(uid);
   if (idx >= 0) expSplit.splitAmong.splice(idx, 1);
   else expSplit.splitAmong.push(uid);
-  const amount = parseFloat(document.getElementById('exp-amount').value) || expSplit._amount || 0;
-  const count = expSplit.splitAmong.length;
-  const perPerson = count > 0 ? amount / count : 0;
   const grp = groupById(state.currentGroupId);
   const saEl = document.getElementById('eq-select-all');
   if (saEl) saEl.checked = expSplit.splitAmong.length === grp.memberIds.length;
@@ -2257,9 +2215,23 @@ window.closeModal = function(id) { document.getElementById(id).classList.remove(
 // ===================================================================
 //  ACTIONS
 // ===================================================================
-window.showGroupInfo = function() {
+
+// =====================================================================
+//  FIX 2: showGroupInfo — re-fetch from Firestore for instant member count
+// =====================================================================
+window.showGroupInfo = async function() {
+  try {
+    const freshSnap = await getDoc(doc(db, 'groups', state.currentGroupId));
+    if (freshSnap.exists()) {
+      const idx = state.groups.findIndex(g => g.id === state.currentGroupId);
+      if (idx !== -1) state.groups[idx] = { id: state.currentGroupId, ...freshSnap.data() };
+      await loadAllRelatedUsers();
+    }
+  } catch(e) {}
   const group = groupById(state.currentGroupId);
   if (!group) return;
+  // Update member count in header instantly
+  document.getElementById('detail-group-meta').textContent = `${group.memberIds.length} member${group.memberIds.length !== 1 ? 's' : ''}`;
   document.getElementById('info-group-code').textContent = group.code || 'N/A';
 
   const memListHtml = group.memberIds.map(id => {
@@ -2283,6 +2255,9 @@ window.showGroupInfo = function() {
   showModal('modal-group-info');
 }
 
+// =====================================================================
+//  FIX 1: removeGroupMember — save removedMembers to Firestore
+// =====================================================================
 window.removeGroupMember = function(userId) {
   const grp = groupById(state.currentGroupId);
   const u = userById(userId);
@@ -2294,7 +2269,12 @@ window.removeGroupMember = function(userId) {
     if (!ok) return;
     grp.memberIds = grp.memberIds.filter(id => id !== userId);
     try {
-      await fsUpdateGroup(grp.id, { memberIds: grp.memberIds });
+      // Track removed members so they can see the banner
+      const removedMembers = grp.removedMembers ? [...grp.removedMembers] : [];
+      if (!removedMembers.includes(userId)) removedMembers.push(userId);
+      await fsUpdateGroup(grp.id, { memberIds: grp.memberIds, removedMembers });
+      grp.removedMembers = removedMembers;
+
       const actData = {
         type: 'member_added', groupId: grp.id, actorId: state.currentUser.id,
         desc: `${state.currentUser.name} removed ${u.name} from the group.`,
@@ -2333,7 +2313,6 @@ window.deleteSelectedGroups = function() {
     try {
       for (const gid of idsToDelete) {
         await fsDeleteGroup(gid);
-        // Also delete related expenses/settlements/activity
         const [exps, setts, acts] = await Promise.all([
           fsGetGroupExpenses(gid),
           fsGetGroupSettlements(gid),
@@ -2427,20 +2406,16 @@ window.settleAllExpenses = function() {
   if (!grp) return;
   const balances = calcGroupBalances(state.currentGroupId);
   if (balances.length === 0) { showToast('Already all settled up!'); return; }
-
   showConfirm('Settle All', `Settle all outstanding balances in "${grp.name}"?`).then(async ok => {
     if (!ok) return;
     try {
       for (const b of balances) {
         const settlData = {
-          groupId: state.currentGroupId,
-          fromId: b.fromId, toId: b.toId,
-          amount: b.amount, note: 'Settle All',
-          date: new Date().toISOString()
+          groupId: state.currentGroupId, fromId: b.fromId, toId: b.toId,
+          amount: b.amount, note: 'Settle All', date: new Date().toISOString()
         };
         const newSettl = await fsAddSettlement(settlData);
         state.settlements.push(newSettl);
-
         const fromU = userById(b.fromId);
         const toU = userById(b.toId);
         const actData = {
@@ -2460,24 +2435,19 @@ window.settleAllExpenses = function() {
 window.addExpense = async function() {
   let desc = document.getElementById('exp-desc').value.trim();
   if (desc) desc = desc.charAt(0).toUpperCase() + desc.slice(1);
-
   const amount = parseFloat(document.getElementById('exp-amount').value);
-  const category = 'Other'; 
+  const category = 'Other';
   const groupId = state.currentGroupId;
-
   if (!desc) { showToast('Please enter a description'); return; }
   if (!amount || amount <= 0) { showToast('Please enter a valid amount'); return; }
   if (!groupId) { showToast('No group selected'); return; }
-
   const grp = groupById(groupId);
   const isTwoMember = grp.memberIds.length === 2;
-
   let paidBy = expSplit.payerId || state.currentUser.id;
   let splitType = expSplit.splitType;
   let splitAmong = [...expSplit.splitAmong];
   let shares = { ...expSplit.shares };
   let percentages = { ...expSplit.percentages };
-
   if (isTwoMember) {
     paidBy = expSplit.payerId;
     splitType = expSplit.splitType;
@@ -2505,7 +2475,6 @@ window.addExpense = async function() {
       if (Math.abs(sum - 100) > 0.01) { showToast('Percentages must add up to 100%'); return; }
     }
   }
-
   try {
     const expData = {
       groupId, desc, amount, category, paidBy, splitType,
@@ -2513,7 +2482,6 @@ window.addExpense = async function() {
     };
     const newExp = await fsAddExpense(expData);
     state.expenses.push(newExp);
-
     const actorName = userById(paidBy)?.name || '';
     const actData = {
       type: 'expense_added', groupId, actorId: paidBy,
@@ -2522,7 +2490,6 @@ window.addExpense = async function() {
     };
     const newAct = await fsAddActivity(actData);
     state.activity.unshift(newAct);
-
     showPage('page-group-detail', true);
     renderGroupDetail(groupId);
     showToast('Expense added!');
@@ -2541,19 +2508,16 @@ window.createGroup = async function() {
     const groupData = {
       name, category: 'Other',
       memberIds: [state.currentUser.id],
-      code,
-      createdBy: state.currentUser.id
+      code, createdBy: state.currentUser.id
     };
     const newGroup = await fsCreateGroup(groupData);
     state.groups.push(newGroup);
-
     const actData = {
       type: 'group_created', groupId: newGroup.id, actorId: state.currentUser.id,
       desc: `Created group "${name}"`, amount: null, date: new Date().toISOString()
     };
     const newAct = await fsAddActivity(actData);
     state.activity.unshift(newAct);
-
     closeModal('modal-create-group');
     showToast('Group created!');
     document.getElementById('grp-name').value = '';
@@ -2609,7 +2573,6 @@ window.confirmSettle = async function() {
     const settlData = { ...settleContext, amount, note, date: new Date().toISOString() };
     const newSettl = await fsAddSettlement(settlData);
     state.settlements.push(newSettl);
-
     const from = userById(settleContext.fromId), to = userById(settleContext.toId);
     const actData = {
       type: 'settlement', groupId: settleContext.groupId, actorId: settleContext.fromId,
@@ -2617,13 +2580,33 @@ window.confirmSettle = async function() {
     };
     const newAct = await fsAddActivity(actData);
     state.activity.unshift(newAct);
-
     closeModal('modal-settle');
     showToast('Settlement recorded!');
     if (state.currentGroupId) renderGroupDetail(state.currentGroupId);
   } catch(e) {
     showToast('Error recording settlement');
   }
+}
+
+// =====================================================================
+//  FIX 1: deleteRemovedGroup — lets removed user clean up group from list
+// =====================================================================
+window.deleteRemovedGroup = function(groupId) {
+  showConfirm('Delete Group', 'Remove this group from your list?').then(async ok => {
+    if (!ok) return;
+    try {
+      state.groups = state.groups.filter(g => g.id !== groupId);
+      state.expenses = state.expenses.filter(e => e.groupId !== groupId);
+      state.settlements = state.settlements.filter(s => s.groupId !== groupId);
+      state.activity = state.activity.filter(a => a.groupId !== groupId);
+      state.currentGroupId = null;
+      showPage('page-groups', false);
+      renderGroups();
+      showToast('Group removed from your list');
+    } catch(e) {
+      showToast('Error removing group');
+    }
+  });
 }
 
 // ===================================================================
@@ -2681,7 +2664,6 @@ function renderGroups() {
   if(!state.currentUser) return;
   const el = document.getElementById('groups-list');
   const myGroups = state.groups.filter(g => g.memberIds.includes(state.currentUser.id));
-  
   if (myGroups.length === 0) {
     el.innerHTML = `<div class="empty-state">
       <div class="empty-icon">🎉</div>
@@ -2690,7 +2672,6 @@ function renderGroups() {
     </div>`;
     return;
   }
-  
   el.innerHTML = myGroups.map(g => {
     const bal = calcGroupBalances(g.id);
     let net = 0;
@@ -2698,12 +2679,10 @@ function renderGroups() {
       if (b.toId === state.currentUser.id) net += b.amount;
       if (b.fromId === state.currentUser.id) net -= b.amount;
     });
-
     let balanceText = 'settled up';
     let balanceClass = 'text-muted';
     if (net > 0.005) { balanceText = `you are owed ${fmt(net)}`; balanceClass = 'text-primary'; }
     else if (net < -0.005) { balanceText = `you owe ${fmt(Math.abs(net))}`; balanceClass = 'text-borrowed'; }
-
     let checkboxHTML = state.deleteGroupMode ? `<input type="checkbox" class="del-cb grp-del-cb" value="${g.id}" onclick="event.stopPropagation()">` : '';
     return `<div class="list-item" onclick="openGroupDetail('${g.id}')">
       ${checkboxHTML}
@@ -2719,32 +2698,26 @@ function renderGroups() {
 function generateExpenseListHTML(expList, group) {
   let currentMonthStr = '';
   let expHTML = '';
-
   expList.forEach(exp => {
     const expDate = toDate(exp.date);
     const monthStrFull = expDate.toLocaleString('default', { month: 'long', year: 'numeric' });
     const monthShort = expDate.toLocaleString('default', { month: 'short' });
     const dayStr = expDate.getDate().toString().padStart(2, '0');
-
     if (monthStrFull !== currentMonthStr) {
       expHTML += `<div class="expense-month-header">${monthStrFull}</div>`;
       currentMonthStr = monthStrFull;
     }
-
     const payer = userById(exp.paidBy);
     const involvedMembers = exp.splitAmong && exp.splitAmong.length > 0 ? exp.splitAmong : group.memberIds;
     const iAmInvolved = involvedMembers.includes(state.currentUser.id);
-
     let myShare = 0;
     if (iAmInvolved) {
       if (exp.splitType === 'equally') myShare = exp.amount / involvedMembers.length;
       else if (exp.splitType === 'unequally' || exp.splitType === 'fullAmount') myShare = (exp.shares && exp.shares[state.currentUser.id]) || 0;
       else if (exp.splitType === 'percentage') myShare = exp.amount * ((exp.percentages && exp.percentages[state.currentUser.id]) || 0) / 100;
     }
-
     const iAmPayer = exp.paidBy === state.currentUser.id;
     let statusText = '', shareValue = '', statusColor = 'var(--text-muted)';
-    
     if (!iAmInvolved) {
       statusText = 'not involved'; shareValue = '';
     } else if (iAmPayer) {
@@ -2754,9 +2727,7 @@ function generateExpenseListHTML(expList, group) {
     } else {
       statusText = 'you borrowed'; shareValue = fmt(myShare); statusColor = 'var(--borrowed)';
     }
-
     const payerText = iAmPayer ? `You paid ${fmt(exp.amount)}` : `${payer?.name || 'Unknown'} paid ${fmt(exp.amount)}`;
-
     expHTML += `
     <div class="list-item" onclick="openExpenseDetail('${exp.id}')" style="border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 16px 0; background: transparent; margin-bottom: 0;">
       <div style="display: flex; flex-direction: column; align-items: center; width: 36px; flex-shrink: 0; text-align: left; align-items: flex-start;">
@@ -2791,12 +2762,35 @@ window.toggleSettledExpenses = function() {
   }
 }
 
+// =====================================================================
+//  FIX 1: renderGroupDetail — show removed banner if user was removed
+// =====================================================================
 function renderGroupDetail(groupId) {
   if(!state.currentUser) return;
   const group = groupById(groupId);
   if (!group) return;
   document.getElementById('detail-group-name').textContent = group.name;
   document.getElementById('detail-group-meta').textContent = `${group.memberIds.length} member${group.memberIds.length !== 1 ? 's' : ''}`;
+
+  // Check if current user has been removed from this group
+  const isRemoved = group.removedMembers && group.removedMembers.includes(state.currentUser.id);
+  if (isRemoved) {
+    document.getElementById('group-balances-summary').innerHTML = '';
+    document.getElementById('group-balances-summary').style.display = 'none';
+    document.getElementById('tab-content-expenses').innerHTML = `
+      <div style="margin: 24px 0; padding: 24px 20px; background: #fff0f0; border: 1.5px solid var(--danger); border-radius: var(--radius); text-align: center;">
+        <div style="font-size: 32px; margin-bottom: 12px;">🚫</div>
+        <div style="font-size: 17px; font-weight: 800; color: var(--danger); margin-bottom: 8px;">You've been removed</div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.6;">
+          You have been removed from <strong>${group.name}</strong> by the group admin.
+        </div>
+        <button onclick="deleteRemovedGroup('${groupId}')" style="background: var(--danger); color: white; border: none; border-radius: 100px; padding: 14px 32px; font-size: 14px; font-weight: 700; cursor: pointer;">
+          🗑️ Delete Group
+        </button>
+      </div>`;
+    document.getElementById('group-detail-fab').style.display = 'none';
+    return;
+  }
 
   const balances = calcGroupBalances(groupId);
   let summaryHTML = '';
@@ -2836,7 +2830,6 @@ function renderGroupDetail(groupId) {
     if (groupSettlements.length > 0) {
       latestSettlementDate = new Date(Math.max(...groupSettlements.map(s => toDate(s.date))));
     }
-
     let activeExpenses = [], settledExpenses = [];
     if (latestSettlementDate) {
       activeExpenses = expenses.filter(e => toDate(e.date) >= latestSettlementDate);
@@ -2844,7 +2837,6 @@ function renderGroupDetail(groupId) {
     } else {
       activeExpenses = expenses;
     }
-
     let expHTML = generateExpenseListHTML(activeExpenses, group);
     if (settledExpenses.length > 0) {
       expHTML += `
@@ -2868,21 +2860,17 @@ function renderExpenseDetail() {
   document.getElementById('detail-expense-amount').textContent = fmt(exp.amount);
   const payer = userById(exp.paidBy);
   document.getElementById('detail-expense-paidby').textContent = `Paid by ${payer.id === state.currentUser.id ? 'You' : payer.name}`;
-
   const splitsEl = document.getElementById('detail-expense-splits');
   const involvedMembers = (exp.splitAmong && exp.splitAmong.length > 0) ? exp.splitAmong : grp.memberIds;
-
   splitsEl.innerHTML = involvedMembers.map(uid => {
     const u = userById(uid);
     if (!u) return '';
     const isPayer = uid === exp.paidBy;
     const isMe = uid === state.currentUser.id;
-
     let share = 0;
     if (exp.splitType === 'equally') share = exp.amount / involvedMembers.length;
     else if (exp.splitType === 'unequally' || exp.splitType === 'fullAmount') share = (exp.shares && exp.shares[uid]) || 0;
     else if (exp.splitType === 'percentage') share = exp.amount * ((exp.percentages && exp.percentages[uid]) || 0) / 100;
-
     let shareText = '', shareValue = '', shareClass = '';
     if (isPayer) {
       const net = exp.amount - share;
@@ -2893,7 +2881,6 @@ function renderExpenseDetail() {
       if (share > 0.005) { shareText = 'owes'; shareValue = fmt(share); shareClass = 'amount-negative'; }
       else { shareText = 'owes'; shareValue = '₹0.00'; }
     }
-
     return `<div class="list-item" style="cursor:default; padding: 12px 16px;">
       ${avatarHtml(u, 'avatar-sm')}
       <div style="flex:1;">
@@ -2910,7 +2897,6 @@ function renderActivityItem(a) {
   const grp = groupById(a.groupId);
   const icons = { expense_added:'💸', settlement:'✅', group_created:'🎉', member_added:'👋' };
   let checkboxHTML = state.deleteActivityMode ? `<input type="checkbox" class="del-cb act-del-cb" value="${a.id}" onclick="event.stopPropagation()" style="margin-right:12px;">` : '';
-  
   return `<div class="activity-item">
     ${checkboxHTML}
     <div class="activity-dot">${icons[a.type] || '📌'}</div>
@@ -2943,7 +2929,6 @@ function renderFriends() {
   if(!state.currentUser) return;
   const el = document.getElementById('friends-list');
   const others = state.users.filter(u => u.id !== state.currentUser.id);
-  
   const filteredFriends = others.filter(u => {
     let owed = 0, owe = 0;
     state.groups.forEach(g => {
@@ -2954,9 +2939,8 @@ function renderFriends() {
         if (b.fromId === state.currentUser.id && b.toId === u.id) owe += b.amount;
       });
     });
-    return Math.abs(owed - owe) > 0.005; 
+    return Math.abs(owed - owe) > 0.005;
   });
-
   if (filteredFriends.length === 0) {
     el.innerHTML = `<div class="empty-state">
       <div class="empty-icon">👥</div>
@@ -2965,7 +2949,6 @@ function renderFriends() {
     </div>`;
     return;
   }
-
   el.innerHTML = filteredFriends.map(u => {
     let owedFromUser = 0, oweToUser = 0;
     state.groups.forEach(g => {
@@ -2978,7 +2961,6 @@ function renderFriends() {
     });
     const net = owedFromUser - oweToUser;
     let checkboxHTML = state.deleteFriendMode ? `<input type="checkbox" class="del-cb friend-del-cb" value="${u.id}" onclick="event.stopPropagation()">` : '';
-    
     return `<div class="list-item" style="cursor:default;">
       ${checkboxHTML}
       ${avatarHtml(u,'avatar-lg')}
@@ -3002,27 +2984,19 @@ let editingExpenseId = null;
 window.editCurrentExpense = function() {
   const exp = state.expenses.find(e => e.id === state.currentExpenseId);
   if (!exp) return;
-
   editingExpenseId = state.currentExpenseId;
   const grp = groupById(exp.groupId);
   const isTwoMember = grp.memberIds.length === 2;
-
-  // Set page title and button text to Edit mode
   document.getElementById('add-expense-page-title').textContent = 'Edit Expense';
   document.getElementById('btn-save-expense').textContent = 'Update Expense';
   document.getElementById('btn-save-expense').onclick = updateExpense;
-
-  // Populate fields
   document.getElementById('exp-desc').value = exp.desc;
   document.getElementById('exp-amount').value = exp.amount;
-
-  // Restore split state
   expSplit.payerId = exp.paidBy;
   expSplit.splitType = exp.splitType === 'fullAmount' ? 'fullAmount' : exp.splitType;
   expSplit.splitAmong = exp.splitAmong ? [...exp.splitAmong] : [...grp.memberIds];
   expSplit.shares = exp.shares ? { ...exp.shares } : {};
   expSplit.percentages = exp.percentages ? { ...exp.percentages } : {};
-
   if (isTwoMember) {
     document.getElementById('btn-split-selector').style.display = 'block';
     document.getElementById('exp-multi-member-section').style.display = 'none';
@@ -3033,7 +3007,6 @@ window.editCurrentExpense = function() {
     updatePayerDisplay();
     updateSplitDisplay();
   }
-
   showPage('page-add-expense', true);
 }
 
@@ -3041,21 +3014,17 @@ window.updateExpense = async function() {
   let desc = document.getElementById('exp-desc').value.trim();
   if (desc) desc = desc.charAt(0).toUpperCase() + desc.slice(1);
   const amount = parseFloat(document.getElementById('exp-amount').value);
-
   if (!desc) { showToast('Please enter a description'); return; }
   if (!amount || amount <= 0) { showToast('Please enter a valid amount'); return; }
-
   const exp = state.expenses.find(e => e.id === editingExpenseId);
   if (!exp) return;
   const grp = groupById(exp.groupId);
   const isTwoMember = grp.memberIds.length === 2;
-
   let paidBy = expSplit.payerId || state.currentUser.id;
   let splitType = expSplit.splitType;
   let splitAmong = [...expSplit.splitAmong];
   let shares = { ...expSplit.shares };
   let percentages = { ...expSplit.percentages };
-
   if (isTwoMember) {
     paidBy = expSplit.payerId;
     splitType = expSplit.splitType;
@@ -3083,18 +3052,11 @@ window.updateExpense = async function() {
       if (Math.abs(sum - 100) > 0.01) { showToast('Percentages must add up to 100%'); return; }
     }
   }
-
   try {
-    const updatedData = {
-      desc, amount, paidBy, splitType, splitAmong, shares, percentages
-    };
+    const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages };
     await updateDoc(doc(db, 'expenses', editingExpenseId), updatedData);
-
-    // Update local state
     const idx = state.expenses.findIndex(e => e.id === editingExpenseId);
     if (idx !== -1) state.expenses[idx] = { ...state.expenses[idx], ...updatedData };
-
-    // Add activity
     const actData = {
       type: 'expense_added', groupId: exp.groupId, actorId: state.currentUser.id,
       desc: `${state.currentUser.name} edited "${desc}" (${fmt(amount)})`,
@@ -3102,13 +3064,10 @@ window.updateExpense = async function() {
     };
     const newAct = await fsAddActivity(actData);
     state.activity.unshift(newAct);
-
-    // Reset edit mode
     editingExpenseId = null;
     document.getElementById('add-expense-page-title').textContent = 'Add Expense';
     document.getElementById('btn-save-expense').textContent = 'Save Expense';
     document.getElementById('btn-save-expense').onclick = addExpense;
-
     showPage('page-group-detail', true);
     renderGroupDetail(exp.groupId);
     showToast('Expense updated!');
@@ -3135,6 +3094,7 @@ window.handleAndroidDownload = function() {
     window.open('https://median.co/share/eewnykl#apk', '_blank');
   }
 }
+
 // ===================================================================
 //  INIT
 // ===================================================================
