@@ -2412,6 +2412,7 @@ window.deleteCurrentExpense = function() {
       
       state.currentExpenseId = null;
       showPage('page-group-detail', true);
+      renderGroupDetail(grpId);
       showToast("Expense deleted");
     } catch(e) { showToast('Error deleting expense'); }
   });
@@ -2507,6 +2508,7 @@ window.addExpense = async function() {
     await fsAddActivity(actData);
     
     showPage('page-group-detail', true);
+    renderGroupDetail(groupId);
     showToast('Expense added!');
     resetExpSplit();
   } catch(e) {
@@ -3077,6 +3079,7 @@ window.updateExpense = async function() {
     document.getElementById('btn-save-expense').textContent = 'Save Expense';
     document.getElementById('btn-save-expense').onclick = addExpense;
     showPage('page-group-detail', true);
+    renderGroupDetail(exp.groupId);
     showToast('Expense updated!');
     resetExpSplit();
   } catch(e) {
