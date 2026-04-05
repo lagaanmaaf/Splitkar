@@ -674,8 +674,11 @@
   <!-- DASHBOARD -->
   <div class="page" id="page-home">
     <div class="page-header">
-      <div class="page-title">Dashboard</div>
-    </div>
+  <div class="page-title">Dashboard</div>
+  <button onclick="showDownloadPage()" style="background:var(--primary-light);color:var(--primary);border:1.5px solid var(--primary);border-radius:100px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+    ⬇️ Get App
+  </button>
+</div>
     <div class="page-content">
       <div class="balance-hero">
         <div class="balance-label">Total Balance</div>
@@ -978,6 +981,66 @@
       </div>
     </div>
   </div>
+
+<!-- DOWNLOAD APP PAGE -->
+<div class="page" id="page-download-app" style="padding-bottom: 0; background: var(--bg);">
+  <div class="detail-header">
+    <button class="back-btn" onclick="closeDownloadPage()" style="border: 1.5px solid var(--border); color: var(--text);">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="page-title" style="font-size: 20px;">Download App</div>
+  </div>
+  <div class="page-content" style="padding-top: 8px;">
+
+    <!-- Android Section -->
+    <div class="card card-pad" style="margin-bottom: 20px;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom: 16px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:#e8f5e9;display:flex;align-items:center;justify-content:center;font-size:24px;">🤖</div>
+        <div>
+          <div style="font-size:17px;font-weight:800;color:var(--text);">Android Users</div>
+          <div style="font-size:13px;color:var(--text-muted);">Download & install the APK</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="handleAndroidDownload()" style="border-radius:12px;">
+        ⬇️ &nbsp;Download Android APK
+      </button>
+    </div>
+
+    <!-- iPhone Section -->
+    <div class="card card-pad">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom: 16px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:#f0f0f5;display:flex;align-items:center;justify-content:center;font-size:24px;">🍎</div>
+        <div>
+          <div style="font-size:17px;font-weight:800;color:var(--text);">iPhone Users</div>
+          <div style="font-size:13px;color:var(--text-muted);">Add to Home Screen via Safari</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="min-width:28px;height:28px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;">1</div>
+          <div style="font-size:14px;color:var(--text);line-height:1.5;">Open <span style="font-weight:700;color:var(--primary);">https://lagaanmaaf.github.io/Splitkar/</span> in your <span style="font-weight:700;">Safari</span> browser.</div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="min-width:28px;height:28px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;">2</div>
+          <div style="font-size:14px;color:var(--text);line-height:1.5;">Click the <span style="font-weight:700;">3 horizontal dots</span> near the right of the search bar.</div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="min-width:28px;height:28px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;">3</div>
+          <div style="font-size:14px;color:var(--text);line-height:1.5;">Click on the <span style="font-weight:700;">Share</span> option.</div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="min-width:28px;height:28px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;">4</div>
+          <div style="font-size:14px;color:var(--text);line-height:1.5;">Click on <span style="font-weight:700;">Add to Home Screen</span>.</div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="min-width:28px;height:28px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;">5</div>
+          <div style="font-size:14px;color:var(--text);line-height:1.5;">Turn on the <span style="font-weight:700;">Open as Web App</span> option and then click <span style="font-weight:700;">Add</span> on the top right.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
 
   <!-- BOTTOM NAV -->
   <nav class="bottom-nav" style="display: none;">
@@ -2901,7 +2964,22 @@ function renderFriends() {
     </div>`;
   }).join('');
 }
+window.showDownloadPage = function() {
+  showPage('page-download-app', true);
+}
 
+window.closeDownloadPage = function() {
+  navigate('home');
+}
+
+window.handleAndroidDownload = function() {
+  const confirmed = confirm(
+    "This app is for Android users only.\n\nWhen you click OK, you'll be redirected to the download page. Click \"Download Android APK\" on that page and install the app."
+  );
+  if (confirmed) {
+    window.open('https://median.co/share/eewnykl#apk', '_blank');
+  }
+}
 // ===================================================================
 //  INIT
 // ===================================================================
