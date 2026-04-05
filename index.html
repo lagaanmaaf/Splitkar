@@ -553,7 +553,7 @@
   .activity-time { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
 
   .toast {
-    position: absolute; bottom: calc(var(--nav-h) + 12px); left: 50%;
+    position: absolute; bottom:20px; left: 50%;
     transform: translateX(-50%) translateY(20px); background: var(--text); color: white;
     padding: 12px 20px; border-radius: 100px; font-size: 14px; font-weight: 500;
     z-index: 300; opacity: 0; transition: opacity 0.2s, transform 0.2s;
@@ -1641,7 +1641,15 @@ window.handleSignUp = async function() {
   const name = document.getElementById('signup-name').value.trim();
   const phone = document.getElementById('signup-phone').value.trim();
   const pass = document.getElementById('signup-pass').value;
+  
   if (!name || !phone || !pass) { showToast("All fields are required"); return; }
+  
+  // Add strict 10-digit validation
+  if (!/^\d{10}$/.test(phone)) { 
+    showToast("Please enter a valid 10-digit mobile number"); 
+    return; 
+  }
+  
   try {
     const existing = await fsGetUser(phone);
     if (existing) { showToast("Mobile already registered"); return; }
