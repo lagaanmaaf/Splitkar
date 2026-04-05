@@ -1769,10 +1769,31 @@ function calcGroupBalances(groupId) {
   });
 
   const balances = [];
+  const processedPairs = new Set(); // Keeps track of pairs we've already calculated
+
   members.forEach(fromId => {
     members.forEach(toId => {
-      if (fromId !== toId && owes[fromId] && owes[fromId][toId] > 0.005) {
-        balances.push({ fromId, toId, amount: owes[fromId][toId] });
+      if (fromId !== toId) {
+        // Create a unique key for the pair (e.g., "UserA-UserB") so we only calculate their net balance once
+        const pairKey = [fromId, toId].sort().join('-');
+        if (processedPairs.has(pairKey)) return;
+
+        // Get what they owe each other
+        const fromOwesTo = (owes[fromId] && owes[fromId][toId]) ? owes[fromId][toId] : 0;
+        const toOwesFrom = (owes[toId] && owes[toId][fromId]) ? owes[toId][fromId] : 0;
+        
+        // Calculate the net difference
+        const netAmount = fromOwesTo - toOwesFrom;
+
+        if (netAmount > 0.005) {
+          // Person A owes Person B more
+          balances.push({ fromId: fromId, toId: toId, amount: netAmount });
+        } else if (netAmount < -0.005) {
+          // Person B owes Person A more
+          balances.push({ fromId: toId, toId: fromId, amount: Math.abs(netAmount) });
+        }
+        
+        processedPairs.add(pairKey);
       }
     });
   });
