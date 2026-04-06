@@ -2057,34 +2057,56 @@ async function verifyWebAuthn() {
 function runMedianBiometric() {
   const bioSub = document.getElementById('bio-sub');
 
-  // Check if biometric is available on this device
-  median.auth.status({
+  // Median uses window.median or window.gonative — check both
+  const medianBridge = window.median || window.gonative;
+
+  if (!medianBridge || !medianBridge.auth) {
+    bioSub.textContent = 'Native auth not available. Use PIN or Password.';
+    return;
+  }
+
+  // Step 1 — check if device has biometrics
+  medianBridge.auth.status({
     callback: function(result) {
-      const hasAny = result.hasTouchId || result.hasFaceId || result.hasBiometrics;
+      const hasAny = result.hasTouchId || result.hasFaceId || result.hasBiometrics || result.isAvailable;
+      
       if (!hasAny) {
-        bioSub.textContent = 'No biometric sensor found. Use PIN or Password instead.';
+        bioSub.textContent = 'No biometric found on this device. Use PIN or Password.';
         return;
       }
 
-      const hasSaved = result.hasSecret;
+      const hasSaved = result.hasSecret || result.hasSavedSecret;
 
       if (!hasSaved) {
-        // First time — save a secret so we can verify later
-        bioSub.textContent = 'Setting up biometric for first time...';
-        median.auth.save({
-          secret: 'splitkar-bio-verify-' + (state.currentUser.id || 'user'),
-          prompt: 'Register your fingerprint or Face ID',
+        // First time — register/save a secret
+        bioSub.textContent = 'First time setup — scan your finger or face...';
+        medianBridge.auth.save({
+          secret: 'splitkar-' + (state.currentUser ? state.currentUser.id : 'user'),
+          prompt: 'Register your fingerprint or Face ID for Splitkar',
           callback: function(saveResult) {
             if (saveResult.success) {
-              bioSub.textContent = 'Biometric registered! Tap Verify to continue.';
+              // Immediately verify after saving
+              bioSub.textContent = 'Registered! Verifying now...';
+              medianBridge.auth.get({
+                prompt: 'Verify your identity',
+                callback: function(getResult) {
+                  if (getResult.success) {
+                    document.getElementById('bio-overlay').classList.remove('open');
+                    revealPassword();
+                  } else {
+                    bioSub.textContent = 'Verification failed. Try again or use PIN/Password.';
+                  }
+                }
+              });
             } else {
-              bioSub.textContent = 'Setup failed. Use PIN or Password instead.';
+              bioSub.textContent = 'Setup cancelled. Try again or use PIN/Password.';
             }
           }
         });
       } else {
-        // Already registered — verify
-        median.auth.get({
+        // Already saved — just verify
+        bioSub.textContent = 'Scan your finger or face to continue...';
+        medianBridge.auth.get({
           prompt: 'Verify your identity to reveal password',
           callback: function(getResult) {
             if (getResult.success) {
@@ -2101,7 +2123,8 @@ function runMedianBiometric() {
 }
 
 window.triggerBiometric = async function() {
-  const isMedianApp = window.gonative !== undefined || window.median !== undefined;
+  // REPLACE with:
+const isMedianApp = (window.gonative !== undefined || window.median !== undefined) && ((window.median && window.median.auth) || (window.gonative && window.gonative.auth));
 
   if (isMedianApp) {
     // ── Median native bridge ──
