@@ -735,6 +735,10 @@
           <input class="form-input" id="login-pass" type="password" placeholder="Enter password" />
         </div>
         <button class="btn btn-primary" onclick="handleLogin()" style="margin-top: 10px;">Login</button>
+        <div style="text-align: center; margin-top: 16px;">
+          <a href="#" onclick="openForgotPassword()" style="color: var(--primary); font-size: 13px; font-weight: 600; text-decoration: none;">Forgot Password?</a>
+        </div>
+        <div id="recaptcha-container" style="margin-top: 10px; display: flex; justify-content: center;"></div>
       </div>
 
       <!-- Sign Up Form -->
@@ -1069,25 +1073,6 @@
         <input class="form-input" id="edit-phone" type="tel" placeholder="Your mobile number" />
       </div>
       
-      <!-- Biometric Password Field -->
-      <div class="form-group" style="margin-top: 16px;">
-        <label class="form-label">Password</label>
-        <div class="password-field">
-          <div class="password-value" id="edit-password-display">••••••••••••</div>
-          <button class="show-btn" id="show-pwd-btn" onclick="handleShowPassword()" title="Reveal password">
-            <svg id="icon-eye" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
-            </svg>
-            <svg id="icon-eye-off" style="display:none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-              <line x1="1" y1="1" x2="23" y2="23"/>
-            </svg>
-          </button>
-        </div>
-        <div id="pwd-hide-timer" style="font-size: 12px; color: var(--text-muted); margin-top: 6px; text-align: right; display: none;"></div>
-      </div>
 
       <div style="margin-top: auto; padding-top: 24px;">
         <button class="btn btn-primary" onclick="saveEditedProfile()">Save Changes</button>
@@ -1328,12 +1313,33 @@
   </div>
 
   <!-- Biometric Prompt Overlay -->
-  <div class="bio-overlay" id="bio-overlay">
-    <div class="bio-overlay-card">
-      <div class="bio-icon" id="bio-icon">🔐</div>
-      <div style="font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 8px;">Verify Identity</div>
-      <div id="bio-sub" style="font-size: 14px; color: var(--text-muted); line-height: 1.5; margin-bottom: 24px;">Use your fingerprint or Face ID to reveal your password.</div>
-      <button onclick="cancelBiometric()" style="background: none; border: 1.5px solid var(--border); border-radius: 100px; padding: 10px 28px; font-size: 14px; font-weight: 600; color: var(--text-muted); cursor: pointer;">Cancel</button>
+  <div class="modal-overlay" id="modal-forgot-pwd">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Reset Password</div>
+      <div class="modal-body">
+        <div id="step-send-otp">
+          <div class="form-group">
+            <label class="form-label">Registered Mobile Number</label>
+            <input class="form-input" id="forgot-phone" type="tel" placeholder="Enter 10-digit number" />
+          </div>
+          <button class="btn btn-primary" onclick="sendOTP()">Send OTP</button>
+        </div>
+        <div id="step-verify-otp" style="display: none;">
+          <div class="form-group">
+            <label class="form-label">Enter OTP</label>
+            <input class="form-input" id="forgot-otp" type="number" placeholder="6-digit code" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Password</label>
+            <input class="form-input" id="forgot-new-pwd" type="password" placeholder="Enter new password" />
+          </div>
+          <button class="btn btn-primary" onclick="verifyOTPAndReset()">Reset Password</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-forgot-pwd')">Cancel</button>
+      </div>
     </div>
   </div>
 
@@ -1344,6 +1350,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, query, where, serverTimestamp, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCxprFyqxdNWRTtmXkn_lCK72k_d3hgKTM",
@@ -1356,6 +1363,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
+const auth = getAuth(firebaseApp);
 
 // ===================================================================
 //  CONSTANTS & STATE
@@ -1384,10 +1392,7 @@ let currentSplitTab = 'equally';
 let globalUnsubs = [];
 let dataUnsubs = [];
 
-// Biometric State
-let isPasswordRevealed = false;
-let bioHideTimeout = null;
-let bioTimerInterval = null;
+
 
 // ===================================================================
 //  HELPERS
@@ -3436,7 +3441,8 @@ window.updateExpense = async function() {
     const dateInput = document.getElementById('exp-date').value;
     const expenseDate = dateInput ? new Date(dateInput).toISOString() : new Date().toISOString();
 
-    const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate };
+    // Updating createdAt brings this expense out of the "Settled" list and into active expenses
+    const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate, createdAt: new Date().toISOString() };
     await updateDoc(doc(db, 'expenses', editingExpenseId), updatedData);
     
     const actData = {
