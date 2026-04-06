@@ -2801,95 +2801,102 @@
     }
 
     window.deleteCurrentExpense = function() {
-  showConfirm('Delete Expense', 'Are you sure you want to delete this expense?').then(async ok => {
-    if (!ok) return;
-    const grpId = state.currentGroupId;
-    const exp = state.expenses.find(e => e.id === state.currentExpenseId);
-    if (!exp) return;
+      showConfirm('Delete Expense', 'Are you sure you want to delete this expense?').then(async ok => {
+        if (!ok) return;
+        const grpId = state.currentGroupId;
+        const exp = state.expenses.find(e => e.id === state.currentExpenseId);
+        if (!exp) return;
 
-    try {
-      const groupSettlements = state.settlements.filter(s => s.groupId === grpId);
-      let latestSettlementTime = 0;
-      if (groupSettlements.length > 0) {
-        latestSettlementTime = Math.max(...groupSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
-      }
-      const expCreatedAt = toDate(exp.createdAt || exp.date).getTime();
-      const isSettledExpense = latestSettlementTime > 0 && expCreatedAt <= latestSettlementTime;
+        try {
+          const groupSettlements = state.settlements.filter(s => s.groupId === grpId);
+          let latestSettlementTime = 0;
+          if (groupSettlements.length > 0) {
+            latestSettlementTime = Math.max(...groupSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
+          }
+          const expCreatedAt = toDate(exp.createdAt || exp.date).getTime();
+          const isSettledExpense = latestSettlementTime > 0 && expCreatedAt <= latestSettlementTime;
 
-      if (isSettledExpense) {
-        // Delete ALL settlement records for this group
-        // Then re-record a fresh settlement that covers only the remaining settled expenses
-        // (excluding the one being deleted)
-        
-        const remainingSettledExpenses = state.expenses.filter(e => 
-          e.id !== state.currentExpenseId &&
-          e.groupId === grpId &&
-          toDate(e.createdAt || e.date).getTime() <= latestSettlementTime
-        );
+          if (isSettledExpense) {
+            const grp = groupById(grpId);
+            const members = grp.memberIds;
 
-        // Delete all existing settlements for this group
-        for (const s of groupSettlements) {
-          await deleteDoc(doc(db, 'settlements', s.id));
-        }
+            // Step 1: Calculate what the ORIGINAL settled amount was for this expense
+            // Original = what was settled = based on createdAt snapshot
+            // We don't have the original amount stored separately, but the settlement
+            // covered ALL settled expenses together. So we recalculate:
+            // settled_balance = sum of all settled expenses' contributions
+            // new_settled_balance = settled_balance MINUS this expense's current contribution
+            // new_settlement = new_settled_balance per pair
 
-        // Recalculate what was owed from remaining settled expenses only
-        const grp = groupById(grpId);
-        const members = grp.memberIds;
-        const tempOwes = {};
-        members.forEach(a => { tempOwes[a] = {}; members.forEach(b => { if(a!==b) tempOwes[a][b]=0; }); });
+            // Get all settled expenses EXCEPT the one being deleted
+            const remainingSettledExpenses = state.expenses.filter(e =>
+              e.id !== state.currentExpenseId &&
+              e.groupId === grpId &&
+              toDate(e.createdAt || e.date).getTime() <= latestSettlementTime
+            );
 
-        remainingSettledExpenses.forEach(e => {
-          const involved = e.splitAmong && e.splitAmong.length > 0 ? e.splitAmong : members;
-          involved.forEach(uid => {
-            if (uid === e.paidBy) return;
-            let share = 0;
-            if (e.splitType === 'equally') share = e.amount / involved.length;
-            else if (e.splitType === 'unequally' || e.splitType === 'fullAmount') share = (e.shares && e.shares[uid]) || 0;
-            else if (e.splitType === 'percentage') share = e.amount * ((e.percentages && e.percentages[uid]) || 0) / 100;
-            tempOwes[uid][e.paidBy] = (tempOwes[uid][e.paidBy] || 0) + share;
-          });
-        });
+            // Compute what remainingSettled expenses owe per pair
+            const tempOwes = {};
+            members.forEach(a => { tempOwes[a] = {}; members.forEach(b => { if(a!==b) tempOwes[a][b]=0; }); });
 
-        // Net the tempOwes and re-record settlements for remaining settled expenses
-        const processedPairs = new Set();
-        for (const fromId of members) {
-          for (const toId of members) {
-            if (fromId === toId) continue;
-            const pairKey = [fromId, toId].sort().join('-');
-            if (processedPairs.has(pairKey)) continue;
-            processedPairs.add(pairKey);
-            const net = (tempOwes[fromId][toId] || 0) - (tempOwes[toId][fromId] || 0);
-            if (net > 0.005) {
-              await fsAddSettlement({
-                groupId: grpId, fromId, toId, amount: net,
-                note: 'Auto-recalculated after expense deletion',
-                date: new Date().toISOString(), createdAt: new Date().toISOString()
+            remainingSettledExpenses.forEach(e => {
+              const involved = e.splitAmong && e.splitAmong.length > 0 ? e.splitAmong : members;
+              involved.forEach(uid => {
+                if (uid === e.paidBy) return;
+                let share = 0;
+                if (e.splitType === 'equally') share = e.amount / involved.length;
+                else if (e.splitType === 'unequally' || e.splitType === 'fullAmount') share = (e.shares && e.shares[uid]) || 0;
+                else if (e.splitType === 'percentage') share = e.amount * ((e.percentages && e.percentages[uid]) || 0) / 100;
+                tempOwes[uid][e.paidBy] = (tempOwes[uid][e.paidBy] || 0) + share;
               });
+            });
+
+            // Delete ALL existing settlements for this group
+            for (const s of groupSettlements) {
+              await deleteDoc(doc(db, 'settlements', s.id));
+            }
+
+            // Re-record settlements ONLY for remaining settled expenses
+            const processedPairs = new Set();
+            for (const fromId of members) {
+              for (const toId of members) {
+                if (fromId === toId) continue;
+                const pairKey = [fromId, toId].sort().join('-');
+                if (processedPairs.has(pairKey)) continue;
+                processedPairs.add(pairKey);
+                const net = (tempOwes[fromId][toId] || 0) - (tempOwes[toId][fromId] || 0);
+                if (net > 0.005) {
+                  await fsAddSettlement({
+                    groupId: grpId, fromId, toId, amount: net,
+                    note: 'Auto-recalculated after expense deletion',
+                    date: new Date().toISOString(),
+                    createdAt: new Date().toISOString()
+                  });
+                }
+              }
             }
           }
+
+          // Delete the expense itself
+          await fsDeleteExpense(state.currentExpenseId);
+
+          const actData = {
+            type: 'expense_added', groupId: grpId, actorId: state.currentUser.id,
+            desc: `${state.currentUser.name} deleted an expense.`,
+            amount: null, date: new Date().toISOString()
+          };
+          await fsAddActivity(actData);
+
+          state.currentExpenseId = null;
+          showPage('page-group-detail', true);
+          renderGroupDetail(grpId);
+          showToast("Expense deleted");
+        } catch(e) {
+          showToast('Error deleting expense');
+          console.error(e);
         }
-      }
-
-      // Delete the expense
-      await fsDeleteExpense(state.currentExpenseId);
-
-      const actData = {
-        type: 'expense_added', groupId: grpId, actorId: state.currentUser.id,
-        desc: `${state.currentUser.name} deleted an expense.`,
-        amount: null, date: new Date().toISOString()
-      };
-      await fsAddActivity(actData);
-
-      state.currentExpenseId = null;
-      showPage('page-group-detail', true);
-      renderGroupDetail(grpId);
-      showToast("Expense deleted");
-    } catch(e) {
-      showToast('Error deleting expense');
-      console.error(e);
+      });
     }
-  });
-}
 
     window.settleAllExpenses = function() {
       const grp = groupById(state.currentGroupId);
@@ -3256,7 +3263,7 @@ window.openRenameGroupModal = function() {
       }).join('');
     }
 
-    function generateExpenseListHTML(expList, group) {
+    function generateExpenseListHTML(expList, group, latestSettlementTime = 0) {
       let currentMonthStr = '';
       let expHTML = '';
       expList.forEach(exp => {
@@ -3289,8 +3296,15 @@ window.openRenameGroupModal = function() {
           statusText = 'you borrowed'; shareValue = fmt(myShare); statusColor = 'var(--borrowed)';
         }
         const payerText = iAmPayer ? `You paid ${fmt(exp.amount)}` : `${payer?.name || 'Unknown'} paid ${fmt(exp.amount)}`;
+
+        // Green dot: expense is in settled list but was edited after settlement
+        const isEditedAfterSettle = latestSettlementTime > 0
+          && exp.updatedAt
+          && new Date(exp.updatedAt).getTime() > latestSettlementTime;
+
         expHTML += `
-        <div class="list-item" onclick="openExpenseDetail('${exp.id}')" style="border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 16px 0; background: transparent; margin-bottom: 0;">
+        <div class="list-item" onclick="openExpenseDetail('${exp.id}')" style="border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 16px 0; background: transparent; margin-bottom: 0; position: relative;">
+          ${isEditedAfterSettle ? `<span style="position:absolute;top:14px;right:2px;width:9px;height:9px;background:#22c55e;border-radius:50%;box-shadow:0 0 0 2px white;z-index:2;"></span>` : ''}
           <div style="display: flex; flex-direction: column; align-items: center; width: 36px; flex-shrink: 0; text-align: left; align-items: flex-start;">
             <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">${monthShort}</span>
             <span style="font-size: 18px; color: var(--text);">${dayStr}</span>
@@ -3371,20 +3385,23 @@ window.openRenameGroupModal = function() {
         
         let activeExpenses = [], settledExpenses = [];
         if (latestSettlementTime > 0) {
+          // An expense is settled if its createdAt <= latestSettlementTime
+          // AND it has NOT been edited after the settlement (no updatedAt, or updatedAt <= latestSettlementTime)
+          // An expense stays settled (but with green dot) if createdAt <= T1 but updatedAt > T1
           activeExpenses = expenses.filter(e => toDate(e.createdAt || e.date).getTime() > latestSettlementTime);
           settledExpenses = expenses.filter(e => toDate(e.createdAt || e.date).getTime() <= latestSettlementTime);
         } else {
           activeExpenses = expenses;
         }
-        
-        let expHTML = generateExpenseListHTML(activeExpenses, group);
+
+        let expHTML = generateExpenseListHTML(activeExpenses, group, 0);
         if (settledExpenses.length > 0) {
           expHTML += `
             <div id="settled-expenses-toggle" onclick="toggleSettledExpenses()" style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 24px 0; line-height: 1.5; cursor: pointer; text-decoration: underline;">
               All expenses before this date have been settled up. Tap to show settled expenses.
             </div>
             <div id="settled-expenses-container" style="display: none;">
-              ${generateExpenseListHTML(settledExpenses, group)}
+              ${generateExpenseListHTML(settledExpenses, group, latestSettlementTime)}
             </div>`;
         }
         expEl.innerHTML = expHTML;
@@ -3610,7 +3627,7 @@ window.openRenameGroupModal = function() {
         const dateInput = document.getElementById('exp-date').value;
         const expenseDate = dateInput ? new Date(dateInput).toISOString() : new Date().toISOString();
 
-        const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate };
+        const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate, updatedAt: new Date().toISOString() };
         await updateDoc(doc(db, 'expenses', editingExpenseId), updatedData);
         
         const actData = {
