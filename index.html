@@ -1253,7 +1253,12 @@
     <div class="modal-overlay" id="modal-group-info">
       <div class="modal">
         <div class="modal-handle"></div>
-        <div class="modal-title">Group Info</div>
+        <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Group Info</span>
+          <button class="btn-icon" style="width: 32px; height: 32px; background: var(--primary-light); color: var(--primary); font-size: 14px;" onclick="openRenameGroupModal()" title="Rename Group">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </button>
+        </div>
         <div class="modal-body">
           <div style="margin-bottom: 20px;">
             <div style="font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Invite Code</div>
@@ -1285,6 +1290,23 @@
         <div class="modal-footer">
           <button class="btn btn-ghost" onclick="closeModal('modal-create-group')">Cancel</button>
           <button class="btn btn-primary" onclick="createGroup()">Create Group</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-rename-group">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Rename Group</div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">New Group Name</label>
+            <input class="form-input" id="rename-grp-name" placeholder="Enter new name" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeModal('modal-rename-group')">Cancel</button>
+          <button class="btn btn-primary" onclick="confirmRenameGroup()">Save</button>
         </div>
       </div>
     </div>
@@ -2052,8 +2074,13 @@
       const group = groupById(groupId);
       if (!group || !group.memberIds) return [];
       const members = group.memberIds;
-      const owes = {};
-      members.forEach(a => { owes[a] = {}; members.forEach(b => { if(a!==b) owes[a][b]=0; }); });
+      
+      // Track net balance for each user pairing
+      const netOwes = {};
+      members.forEach(a => { 
+        netOwes[a] = {}; 
+        members.forEach(b => { if (a !== b) netOwes[a][b] = 0; }); 
+      });
 
       const expenses = state.expenses.filter(e => e.groupId === groupId);
       expenses.forEach(exp => {
@@ -2064,41 +2091,37 @@
           if (exp.splitType === 'equally') share = exp.amount / involvedMembers.length;
           else if (exp.splitType === 'unequally' || exp.splitType === 'fullAmount') share = (exp.shares && exp.shares[uid]) || 0;
           else if (exp.splitType === 'percentage') share = exp.amount * ((exp.percentages && exp.percentages[uid]) || 0) / 100;
-          owes[uid] = owes[uid] || {};
-          owes[uid][exp.paidBy] = (owes[uid][exp.paidBy] || 0) + share;
+          
+          if(netOwes[uid] && netOwes[uid][exp.paidBy] !== undefined) {
+              netOwes[uid][exp.paidBy] += share;
+              netOwes[exp.paidBy][uid] -= share;
+          }
         });
       });
 
       const settlements = state.settlements.filter(s => s.groupId === groupId);
       settlements.forEach(s => {
-        if (owes[s.fromId] && owes[s.fromId][s.toId] !== undefined) {
-          owes[s.fromId][s.toId] = Math.max(0, owes[s.fromId][s.toId] - s.amount);
+        if(netOwes[s.fromId] && netOwes[s.fromId][s.toId] !== undefined) {
+            netOwes[s.fromId][s.toId] -= s.amount;
+            netOwes[s.toId][s.fromId] += s.amount;
         }
       });
 
       const balances = [];
-      const processedPairs = new Set(); // Keeps track of pairs we've already calculated
+      const processedPairs = new Set();
 
       members.forEach(fromId => {
         members.forEach(toId => {
           if (fromId !== toId) {
-            // Create a unique key for the pair (e.g., "UserA-UserB") so we only calculate their net balance once
             const pairKey = [fromId, toId].sort().join('-');
             if (processedPairs.has(pairKey)) return;
 
-            // Get what they owe each other
-            const fromOwesTo = (owes[fromId] && owes[fromId][toId]) ? owes[fromId][toId] : 0;
-            const toOwesFrom = (owes[toId] && owes[toId][fromId]) ? owes[toId][fromId] : 0;
-            
-            // Calculate the net difference
-            const netAmount = fromOwesTo - toOwesFrom;
+            const amount = netOwes[fromId][toId];
 
-            if (netAmount > 0.005) {
-              // Person A owes Person B more
-              balances.push({ fromId: fromId, toId: toId, amount: netAmount });
-            } else if (netAmount < -0.005) {
-              // Person B owes Person A more
-              balances.push({ fromId: toId, toId: fromId, amount: Math.abs(netAmount) });
+            if (amount > 0.005) {
+              balances.push({ fromId: fromId, toId: toId, amount: amount });
+            } else if (amount < -0.005) {
+              balances.push({ fromId: toId, toId: fromId, amount: Math.abs(amount) });
             }
             
             processedPairs.add(pairKey);
@@ -2893,6 +2916,56 @@
       }
     }
 
+window.openRenameGroupModal = function() {
+      const grp = groupById(state.currentGroupId);
+      if (!grp) return;
+      document.getElementById('rename-grp-name').value = grp.name;
+      closeModal('modal-group-info'); // Close the info modal
+      showModal('modal-rename-group'); // Open the rename modal
+    }
+
+    window.confirmRenameGroup = async function() {
+      const newName = document.getElementById('rename-grp-name').value.trim();
+      const grp = groupById(state.currentGroupId);
+      if (!grp) return;
+      
+      if (!newName) { 
+        showToast('Please enter a group name'); 
+        return; 
+      }
+      
+      if (newName === grp.name) { 
+        closeModal('modal-rename-group'); 
+        return; 
+      }
+
+      try {
+        // Update Firestore
+        await fsUpdateGroup(grp.id, { name: newName });
+        
+        // Add an activity log so everyone sees the change
+        const actData = {
+          type: 'group_created', // Re-using the party popper icon
+          groupId: grp.id, 
+          actorId: state.currentUser.id,
+          desc: `${state.currentUser.name} renamed the group to "${newName}"`,
+          amount: null, 
+          date: new Date().toISOString()
+        };
+        await fsAddActivity(actData);
+        
+        closeModal('modal-rename-group');
+        showToast('Group renamed successfully!');
+        
+        // Note: Because of your robust startRealtimeSync() setup, 
+        // the UI (headers, lists, etc.) will update automatically!
+      } catch(e) {
+        showToast('Error renaming group');
+        console.error(e);
+      }
+    }
+
+
     window.createGroup = async function() {
       const name = document.getElementById('grp-name').value.trim();
       if (!name) { showToast('Please enter a group name'); return; }
@@ -3457,7 +3530,19 @@
         const dateInput = document.getElementById('exp-date').value;
         const expenseDate = dateInput ? new Date(dateInput).toISOString() : new Date().toISOString();
 
-        const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate };
+        // By updating the createdAt timestamp, we force this edited expense 
+        // to pop out of the "Settled Expenses" folder and back into the active feed.
+        const updatedData = { 
+            desc, 
+            amount, 
+            paidBy, 
+            splitType, 
+            splitAmong, 
+            shares, 
+            percentages, 
+            date: expenseDate,
+            createdAt: new Date().toISOString() 
+        };
         await updateDoc(doc(db, 'expenses', editingExpenseId), updatedData);
         
         const actData = {
