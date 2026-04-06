@@ -1835,178 +1835,97 @@ window.deleteAccount = function() {
 }
 
 // ===================================================================
-//  BIOMETRIC PASSWORD REVEAL LOGIC
+//  FORGOT PASSWORD & OTP LOGIC
 // ===================================================================
 
-function uint8ArrayToBase64(arr) {
-  return btoa(String.fromCharCode(...arr));
-}
-function base64ToUint8Array(str) {
-  return Uint8Array.from(atob(str), c => c.charCodeAt(0));
-}
+window.openForgotPassword = function() {
+  document.getElementById('step-send-otp').style.display = 'block';
+  document.getElementById('step-verify-otp').style.display = 'none';
+  document.getElementById('forgot-phone').value = '';
+  document.getElementById('forgot-otp').value = '';
+  document.getElementById('forgot-new-pwd').value = '';
+  showModal('modal-forgot-pwd');
 
-window.hidePassword = function() {
-  isPasswordRevealed = false;
-  const display = document.getElementById('edit-password-display');
-  if (display) {
-    display.textContent = '••••••••••••';
-    display.classList.remove('revealed');
+  if (!window.recaptchaVerifier) {
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      'size': 'invisible',
+      'callback': (response) => {
+        // reCAPTCHA solved automatically
+      }
+    });
   }
-  document.getElementById('icon-eye').style.display = 'block';
-  document.getElementById('icon-eye-off').style.display = 'none';
-  document.getElementById('pwd-hide-timer').style.display = 'none';
-  clearTimeout(bioHideTimeout);
-  clearInterval(bioTimerInterval);
 }
 
-window.revealPassword = function() {
-  isPasswordRevealed = true;
-  const display = document.getElementById('edit-password-display');
-  
-  // Safely grab password or fallback if none exists
-  const realPwd = (state.currentUser && state.currentUser.password) ? state.currentUser.password : 'No password set';
-  
-  display.textContent = realPwd;
-  display.classList.add('revealed');
-  document.getElementById('icon-eye').style.display = 'none';
-  document.getElementById('icon-eye-off').style.display = 'block';
-  showToast('Identity verified. Password revealed.');
+let resetTargetUserId = null;
 
-  // Auto-hide after 10 seconds
-  let secondsLeft = 10;
-  const timerEl = document.getElementById('pwd-hide-timer');
-  timerEl.style.display = 'block';
-  timerEl.textContent = `Hiding in ${secondsLeft}s`;
-
-  bioTimerInterval = setInterval(() => {
-    secondsLeft--;
-    timerEl.textContent = `Hiding in ${secondsLeft}s`;
-    if (secondsLeft <= 0) hidePassword();
-  }, 1000);
-
-  bioHideTimeout = setTimeout(hidePassword, 10000);
-}
-
-window.cancelBiometric = function() {
-  document.getElementById('bio-overlay').classList.remove('open');
-}
-
-async function registerBiometric() {
-  const challenge = crypto.getRandomValues(new Uint8Array(32));
-  const publicKey = {
-    challenge,
-    rp: { name: 'SplitEase', id: window.location.hostname || 'localhost' },
-    user: {
-      id: new TextEncoder().encode(state.currentUser.id || 'temp-id'),
-      name: state.currentUser.phone || 'user',
-      displayName: state.currentUser.name || 'User'
-    },
-    pubKeyCredParams: [
-      { type: 'public-key', alg: -7 },
-      { type: 'public-key', alg: -257 }
-    ],
-    authenticatorSelection: {
-      authenticatorAttachment: 'platform',
-      userVerification: 'required'
-    },
-    timeout: 60000
-  };
-
-  const credential = await navigator.credentials.create({ publicKey });
-  const credentialId = uint8ArrayToBase64(new Uint8Array(credential.rawId));
-  localStorage.setItem('bioCredId', credentialId);
-  return credential;
-}
-
-async function verifyBiometric() {
-  const storedId = localStorage.getItem('bioCredId');
-  const challenge = crypto.getRandomValues(new Uint8Array(32));
-  const publicKey = {
-    challenge,
-    rpId: window.location.hostname || 'localhost',
-    allowCredentials: storedId ? [{
-      type: 'public-key',
-      id: base64ToUint8Array(storedId),
-      transports: ['internal']
-    }] : [],
-    userVerification: 'required',
-    timeout: 60000
-  };
-
-  await navigator.credentials.get({ publicKey });
-}
-
-window.handleShowPassword = async function() {
-  // If already revealed — hide it
-  if (isPasswordRevealed) {
-    hidePassword();
-    return;
-  }
-
-  // Check WebAuthn support
-  if (!window.PublicKeyCredential) {
-    showToast('Biometric auth is not supported on this device/browser.');
-    return;
+window.sendOTP = async function() {
+  const phone = document.getElementById('forgot-phone').value.trim();
+  if (!/^\d{10}$/.test(phone)) { 
+    showToast("Please enter a valid 10-digit mobile number"); 
+    return; 
   }
 
   try {
-    // Check platform authenticator (fingerprint/faceID)
-    const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    if (!available) {
-      showToast('No biometric sensor found on this device.');
+    // 1. Verify user exists in Firestore
+    const user = await fsGetUser(phone);
+    if (!user) {
+      showToast("Mobile number not registered in Splitkar.");
       return;
     }
-  } catch(e) {
-    showToast('Biometric check failed. Please ensure secure context.');
-    return;
-  }
+    resetTargetUserId = user.id;
 
-  // Show overlay while biometric prompt opens
-  const bioSub = document.getElementById('bio-sub');
-  bioSub.textContent = 'Use your fingerprint or Face ID to reveal your password.';
-  document.getElementById('bio-overlay').classList.add('open');
-
-  try {
-    const storedId = localStorage.getItem('bioCredId');
-
-    if (!storedId) {
-      // First time — register biometric
-      bioSub.textContent = 'First time setup — register your fingerprint or Face ID.';
-      await registerBiometric();
-    } else {
-      // Already registered — just verify
-      await verifyBiometric();
-    }
-
-    document.getElementById('bio-overlay').classList.remove('open');
-    revealPassword();
-
-  } catch (err) {
-    document.getElementById('bio-overlay').classList.remove('open');
-    if (err.name === 'NotAllowedError') {
-      showToast('Biometric verification cancelled or failed.');
-    } else if (err.name === 'InvalidStateError') {
-      // Credential already registered — try verify instead
-      try {
-        await verifyBiometric();
-        document.getElementById('bio-overlay').classList.remove('open');
-        revealPassword();
-      } catch(e) {
-        showToast('Verification failed. Try again.');
-      }
-    } else {
-      showToast('Biometric error. Make sure you are using a secure browser.');
-      console.error(err);
+    // 2. Firebase Auth requires E.164 format. Prepending +91 for India.
+    const phoneNumber = "+91" + phone;
+    const appVerifier = window.recaptchaVerifier;
+    
+    showToast("Sending OTP...");
+    window.confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+    
+    showToast("OTP Sent Successfully!");
+    document.getElementById('step-send-otp').style.display = 'none';
+    document.getElementById('step-verify-otp').style.display = 'block';
+    
+  } catch (error) {
+    console.error(error);
+    showToast("Error sending OTP. Try again.");
+    if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.render().then(widgetId => window.grecaptcha.reset(widgetId));
     }
   }
 }
 
-// Override showEditProfilePage to reset password visibility
+window.verifyOTPAndReset = async function() {
+  const otpCode = document.getElementById('forgot-otp').value.trim();
+  const newPwd = document.getElementById('forgot-new-pwd').value;
+
+  if (!otpCode || !newPwd) {
+    showToast("Please enter OTP and new password.");
+    return;
+  }
+
+  try {
+    showToast("Verifying OTP...");
+    const result = await window.confirmationResult.confirm(otpCode);
+    
+    // OTP verified successfully! Now update password in Firestore
+    if (result.user && resetTargetUserId) {
+      await fsUpdateUser(resetTargetUserId, { password: newPwd });
+      showToast("Password reset successfully! You can log in.");
+      closeModal('modal-forgot-pwd');
+      
+      // Sign out from Firebase Auth since we only needed it for phone verification
+      auth.signOut();
+    }
+  } catch (error) {
+    console.error(error);
+    showToast("Invalid OTP. Please try again.");
+  }
+}
+
 window.showEditProfilePage = function() {
   showPage('page-edit-profile', true);
   document.getElementById('edit-name').value = state.currentUser.name;
   document.getElementById('edit-phone').value = state.currentUser.phone;
-  hidePassword(); // Make sure it's hidden when entering the page
 }
 
 window.closeEditProfilePage = function() { navigate('home'); }
