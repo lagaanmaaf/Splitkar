@@ -2074,13 +2074,8 @@
       const group = groupById(groupId);
       if (!group || !group.memberIds) return [];
       const members = group.memberIds;
-      
-      // Track net balance for each user pairing
-      const netOwes = {};
-      members.forEach(a => { 
-        netOwes[a] = {}; 
-        members.forEach(b => { if (a !== b) netOwes[a][b] = 0; }); 
-      });
+      const owes = {};
+      members.forEach(a => { owes[a] = {}; members.forEach(b => { if(a!==b) owes[a][b]=0; }); });
 
       const expenses = state.expenses.filter(e => e.groupId === groupId);
       expenses.forEach(exp => {
@@ -2091,37 +2086,52 @@
           if (exp.splitType === 'equally') share = exp.amount / involvedMembers.length;
           else if (exp.splitType === 'unequally' || exp.splitType === 'fullAmount') share = (exp.shares && exp.shares[uid]) || 0;
           else if (exp.splitType === 'percentage') share = exp.amount * ((exp.percentages && exp.percentages[uid]) || 0) / 100;
-          
-          if(netOwes[uid] && netOwes[uid][exp.paidBy] !== undefined) {
-              netOwes[uid][exp.paidBy] += share;
-              netOwes[exp.paidBy][uid] -= share;
-          }
+          owes[uid] = owes[uid] || {};
+          owes[uid][exp.paidBy] = (owes[uid][exp.paidBy] || 0) + share;
         });
       });
 
       const settlements = state.settlements.filter(s => s.groupId === groupId);
       settlements.forEach(s => {
-        if(netOwes[s.fromId] && netOwes[s.fromId][s.toId] !== undefined) {
-            netOwes[s.fromId][s.toId] -= s.amount;
-            netOwes[s.toId][s.fromId] += s.amount;
+        if (!s.fromId || !s.toId) return;
+        const fromOwesToId = owes[s.fromId] && owes[s.fromId][s.toId] !== undefined ? owes[s.fromId][s.toId] : 0;
+        if (fromOwesToId >= s.amount - 0.005) {
+          // Normal case: fromId owed toId, reduce it
+          if (owes[s.fromId]) owes[s.fromId][s.toId] = Math.max(0, fromOwesToId - s.amount);
+        } else {
+          // Reversal case: reduce what we can from this direction, 
+          // then add the remainder as credit in the other direction
+          const remainder = s.amount - fromOwesToId;
+          if (owes[s.fromId]) owes[s.fromId][s.toId] = 0;
+          if (owes[s.toId] && owes[s.toId][s.fromId] !== undefined) {
+            owes[s.toId][s.fromId] = Math.max(0, owes[s.toId][s.fromId] - remainder);
+          }
         }
       });
 
       const balances = [];
-      const processedPairs = new Set();
+      const processedPairs = new Set(); // Keeps track of pairs we've already calculated
 
       members.forEach(fromId => {
         members.forEach(toId => {
           if (fromId !== toId) {
+            // Create a unique key for the pair (e.g., "UserA-UserB") so we only calculate their net balance once
             const pairKey = [fromId, toId].sort().join('-');
             if (processedPairs.has(pairKey)) return;
 
-            const amount = netOwes[fromId][toId];
+            // Get what they owe each other
+            const fromOwesTo = (owes[fromId] && owes[fromId][toId]) ? owes[fromId][toId] : 0;
+            const toOwesFrom = (owes[toId] && owes[toId][fromId]) ? owes[toId][fromId] : 0;
+            
+            // Calculate the net difference
+            const netAmount = fromOwesTo - toOwesFrom;
 
-            if (amount > 0.005) {
-              balances.push({ fromId: fromId, toId: toId, amount: amount });
-            } else if (amount < -0.005) {
-              balances.push({ fromId: toId, toId: fromId, amount: Math.abs(amount) });
+            if (netAmount > 0.005) {
+              // Person A owes Person B more
+              balances.push({ fromId: fromId, toId: toId, amount: netAmount });
+            } else if (netAmount < -0.005) {
+              // Person B owes Person A more
+              balances.push({ fromId: toId, toId: fromId, amount: Math.abs(netAmount) });
             }
             
             processedPairs.add(pairKey);
@@ -2791,25 +2801,95 @@
     }
 
     window.deleteCurrentExpense = function() {
-      showConfirm('Delete Expense', 'Are you sure you want to delete this expense?').then(async ok => {
-        if (!ok) return;
-        const grpId = state.currentGroupId;
-        try {
-          await fsDeleteExpense(state.currentExpenseId);
-          const actData = {
-            type: 'expense_added', groupId: grpId, actorId: state.currentUser.id,
-            desc: `${state.currentUser.name} deleted an expense.`,
-            amount: null, date: new Date().toISOString()
-          };
-          await fsAddActivity(actData);
-          
-          state.currentExpenseId = null;
-          showPage('page-group-detail', true);
-          renderGroupDetail(grpId);
-          showToast("Expense deleted");
-        } catch(e) { showToast('Error deleting expense'); }
-      });
+  showConfirm('Delete Expense', 'Are you sure you want to delete this expense?').then(async ok => {
+    if (!ok) return;
+    const grpId = state.currentGroupId;
+    const exp = state.expenses.find(e => e.id === state.currentExpenseId);
+    if (!exp) return;
+
+    try {
+      const groupSettlements = state.settlements.filter(s => s.groupId === grpId);
+      let latestSettlementTime = 0;
+      if (groupSettlements.length > 0) {
+        latestSettlementTime = Math.max(...groupSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
+      }
+      const expCreatedAt = toDate(exp.createdAt || exp.date).getTime();
+      const isSettledExpense = latestSettlementTime > 0 && expCreatedAt <= latestSettlementTime;
+
+      if (isSettledExpense) {
+        // Delete ALL settlement records for this group
+        // Then re-record a fresh settlement that covers only the remaining settled expenses
+        // (excluding the one being deleted)
+        
+        const remainingSettledExpenses = state.expenses.filter(e => 
+          e.id !== state.currentExpenseId &&
+          e.groupId === grpId &&
+          toDate(e.createdAt || e.date).getTime() <= latestSettlementTime
+        );
+
+        // Delete all existing settlements for this group
+        for (const s of groupSettlements) {
+          await deleteDoc(doc(db, 'settlements', s.id));
+        }
+
+        // Recalculate what was owed from remaining settled expenses only
+        const grp = groupById(grpId);
+        const members = grp.memberIds;
+        const tempOwes = {};
+        members.forEach(a => { tempOwes[a] = {}; members.forEach(b => { if(a!==b) tempOwes[a][b]=0; }); });
+
+        remainingSettledExpenses.forEach(e => {
+          const involved = e.splitAmong && e.splitAmong.length > 0 ? e.splitAmong : members;
+          involved.forEach(uid => {
+            if (uid === e.paidBy) return;
+            let share = 0;
+            if (e.splitType === 'equally') share = e.amount / involved.length;
+            else if (e.splitType === 'unequally' || e.splitType === 'fullAmount') share = (e.shares && e.shares[uid]) || 0;
+            else if (e.splitType === 'percentage') share = e.amount * ((e.percentages && e.percentages[uid]) || 0) / 100;
+            tempOwes[uid][e.paidBy] = (tempOwes[uid][e.paidBy] || 0) + share;
+          });
+        });
+
+        // Net the tempOwes and re-record settlements for remaining settled expenses
+        const processedPairs = new Set();
+        for (const fromId of members) {
+          for (const toId of members) {
+            if (fromId === toId) continue;
+            const pairKey = [fromId, toId].sort().join('-');
+            if (processedPairs.has(pairKey)) continue;
+            processedPairs.add(pairKey);
+            const net = (tempOwes[fromId][toId] || 0) - (tempOwes[toId][fromId] || 0);
+            if (net > 0.005) {
+              await fsAddSettlement({
+                groupId: grpId, fromId, toId, amount: net,
+                note: 'Auto-recalculated after expense deletion',
+                date: new Date().toISOString(), createdAt: new Date().toISOString()
+              });
+            }
+          }
+        }
+      }
+
+      // Delete the expense
+      await fsDeleteExpense(state.currentExpenseId);
+
+      const actData = {
+        type: 'expense_added', groupId: grpId, actorId: state.currentUser.id,
+        desc: `${state.currentUser.name} deleted an expense.`,
+        amount: null, date: new Date().toISOString()
+      };
+      await fsAddActivity(actData);
+
+      state.currentExpenseId = null;
+      showPage('page-group-detail', true);
+      renderGroupDetail(grpId);
+      showToast("Expense deleted");
+    } catch(e) {
+      showToast('Error deleting expense');
+      console.error(e);
     }
+  });
+}
 
     window.settleAllExpenses = function() {
       const grp = groupById(state.currentGroupId);
@@ -3530,19 +3610,7 @@ window.openRenameGroupModal = function() {
         const dateInput = document.getElementById('exp-date').value;
         const expenseDate = dateInput ? new Date(dateInput).toISOString() : new Date().toISOString();
 
-        // By updating the createdAt timestamp, we force this edited expense 
-        // to pop out of the "Settled Expenses" folder and back into the active feed.
-        const updatedData = { 
-            desc, 
-            amount, 
-            paidBy, 
-            splitType, 
-            splitAmong, 
-            shares, 
-            percentages, 
-            date: expenseDate,
-            createdAt: new Date().toISOString() 
-        };
+        const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate };
         await updateDoc(doc(db, 'expenses', editingExpenseId), updatedData);
         
         const actData = {
