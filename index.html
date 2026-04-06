@@ -414,90 +414,7 @@
   }
   .form-input:focus { border-color: var(--primary); }
 
-  /* Biometric Password Field Styles */
-  .password-field {
-    display: flex;
-    align-items: center;
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 13px 16px;
-    background: white;
-    gap: 12px;
-    transition: border-color 0.15s;
-  }
-  .password-field:focus-within { border-color: var(--primary); }
-  .password-value {
-    flex: 1;
-    font-size: 20px;
-    letter-spacing: 4px;
-    color: var(--text);
-    font-family: monospace;
-    user-select: none;
-    transition: all 0.3s ease;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .password-value.revealed {
-    font-size: 15px;
-    letter-spacing: 1px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  }
-  .show-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    border-radius: 6px;
-    transition: color 0.15s, background 0.15s;
-    flex-shrink: 0;
-  }
-  .show-btn:hover {
-    color: var(--primary);
-    background: var(--primary-light);
-  }
-  .show-btn svg { width: 20px; height: 20px; }
 
-  .bio-overlay {
-    display: none;
-    position: absolute; 
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    z-index: 250;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.2s ease;
-  }
-  .bio-overlay.open { display: flex; }
-  .bio-overlay-card {
-    background: white;
-    border-radius: 24px;
-    padding: 36px 28px;
-    text-align: center;
-    max-width: 320px;
-    width: 90%;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.1);
-    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  }
-  @keyframes popIn {
-    0%   { transform: scale(0.85); opacity: 0; }
-    100% { transform: scale(1);    opacity: 1; }
-  }
-  .bio-icon {
-    font-size: 56px;
-    margin-bottom: 16px;
-    animation: pulse 1.5s ease infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50%      { transform: scale(1.08); }
-  }
 
   .modern-input-row {
     display: flex;
@@ -1068,27 +985,7 @@
         <label class="form-label">Mobile Number</label>
         <input class="form-input" id="edit-phone" type="tel" placeholder="Your mobile number" />
       </div>
-      
-      <!-- Biometric Password Field -->
-      <div class="form-group" style="margin-top: 16px;">
-        <label class="form-label">Password</label>
-        <div class="password-field">
-          <div class="password-value" id="edit-password-display">••••••••••••</div>
-          <button class="show-btn" id="show-pwd-btn" onclick="handleShowPassword()" title="Reveal password">
-            <svg id="icon-eye" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
-            </svg>
-            <svg id="icon-eye-off" style="display:none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-              <line x1="1" y1="1" x2="23" y2="23"/>
-            </svg>
-          </button>
-        </div>
-        <div id="pwd-hide-timer" style="font-size: 12px; color: var(--text-muted); margin-top: 6px; text-align: right; display: none;"></div>
-      </div>
-
+    
       <div style="margin-top: auto; padding-top: 24px;">
         <button class="btn btn-primary" onclick="saveEditedProfile()">Save Changes</button>
       </div>
@@ -1328,14 +1225,7 @@
   </div>
 
   <!-- Biometric Prompt Overlay -->
-  <div class="bio-overlay" id="bio-overlay">
-    <div class="bio-overlay-card">
-      <div class="bio-icon" id="bio-icon">🔐</div>
-      <div style="font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 8px;">Verify Identity</div>
-      <div id="bio-sub" style="font-size: 14px; color: var(--text-muted); line-height: 1.5; margin-bottom: 24px;">Use your fingerprint or Face ID to reveal your password.</div>
-      <button onclick="cancelBiometric()" style="background: none; border: 1.5px solid var(--border); border-radius: 100px; padding: 10px 28px; font-size: 14px; font-weight: 600; color: var(--text-muted); cursor: pointer;">Cancel</button>
-    </div>
-  </div>
+
 
   <div class="toast" id="toast"></div>
 </div>
@@ -1383,11 +1273,6 @@ let currentSplitTab = 'equally';
 
 let globalUnsubs = [];
 let dataUnsubs = [];
-
-// Biometric State
-let isPasswordRevealed = false;
-let bioHideTimeout = null;
-let bioTimerInterval = null;
 
 // ===================================================================
 //  HELPERS
@@ -1829,179 +1714,11 @@ window.deleteAccount = function() {
   });
 }
 
-// ===================================================================
-//  BIOMETRIC PASSWORD REVEAL LOGIC
-// ===================================================================
 
-function uint8ArrayToBase64(arr) {
-  return btoa(String.fromCharCode(...arr));
-}
-function base64ToUint8Array(str) {
-  return Uint8Array.from(atob(str), c => c.charCodeAt(0));
-}
-
-window.hidePassword = function() {
-  isPasswordRevealed = false;
-  const display = document.getElementById('edit-password-display');
-  if (display) {
-    display.textContent = '••••••••••••';
-    display.classList.remove('revealed');
-  }
-  document.getElementById('icon-eye').style.display = 'block';
-  document.getElementById('icon-eye-off').style.display = 'none';
-  document.getElementById('pwd-hide-timer').style.display = 'none';
-  clearTimeout(bioHideTimeout);
-  clearInterval(bioTimerInterval);
-}
-
-window.revealPassword = function() {
-  isPasswordRevealed = true;
-  const display = document.getElementById('edit-password-display');
-  
-  // Safely grab password or fallback if none exists
-  const realPwd = (state.currentUser && state.currentUser.password) ? state.currentUser.password : 'No password set';
-  
-  display.textContent = realPwd;
-  display.classList.add('revealed');
-  document.getElementById('icon-eye').style.display = 'none';
-  document.getElementById('icon-eye-off').style.display = 'block';
-  showToast('Identity verified. Password revealed.');
-
-  // Auto-hide after 10 seconds
-  let secondsLeft = 10;
-  const timerEl = document.getElementById('pwd-hide-timer');
-  timerEl.style.display = 'block';
-  timerEl.textContent = `Hiding in ${secondsLeft}s`;
-
-  bioTimerInterval = setInterval(() => {
-    secondsLeft--;
-    timerEl.textContent = `Hiding in ${secondsLeft}s`;
-    if (secondsLeft <= 0) hidePassword();
-  }, 1000);
-
-  bioHideTimeout = setTimeout(hidePassword, 10000);
-}
-
-window.cancelBiometric = function() {
-  document.getElementById('bio-overlay').classList.remove('open');
-}
-
-async function registerBiometric() {
-  const challenge = crypto.getRandomValues(new Uint8Array(32));
-  const publicKey = {
-    challenge,
-    rp: { name: 'SplitEase', id: window.location.hostname || 'localhost' },
-    user: {
-      id: new TextEncoder().encode(state.currentUser.id || 'temp-id'),
-      name: state.currentUser.phone || 'user',
-      displayName: state.currentUser.name || 'User'
-    },
-    pubKeyCredParams: [
-      { type: 'public-key', alg: -7 },
-      { type: 'public-key', alg: -257 }
-    ],
-    authenticatorSelection: {
-      authenticatorAttachment: 'platform',
-      userVerification: 'required'
-    },
-    timeout: 60000
-  };
-
-  const credential = await navigator.credentials.create({ publicKey });
-  const credentialId = uint8ArrayToBase64(new Uint8Array(credential.rawId));
-  localStorage.setItem('bioCredId', credentialId);
-  return credential;
-}
-
-async function verifyBiometric() {
-  const storedId = localStorage.getItem('bioCredId');
-  const challenge = crypto.getRandomValues(new Uint8Array(32));
-  const publicKey = {
-    challenge,
-    rpId: window.location.hostname || 'localhost',
-    allowCredentials: storedId ? [{
-      type: 'public-key',
-      id: base64ToUint8Array(storedId),
-      transports: ['internal']
-    }] : [],
-    userVerification: 'required',
-    timeout: 60000
-  };
-
-  await navigator.credentials.get({ publicKey });
-}
-
-window.handleShowPassword = async function() {
-  // If already revealed — hide it
-  if (isPasswordRevealed) {
-    hidePassword();
-    return;
-  }
-
-  // Check WebAuthn support
-  if (!window.PublicKeyCredential) {
-    showToast('Biometric auth is not supported on this device/browser.');
-    return;
-  }
-
-  try {
-    // Check platform authenticator (fingerprint/faceID)
-    const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    if (!available) {
-      showToast('No biometric sensor found on this device.');
-      return;
-    }
-  } catch(e) {
-    showToast('Biometric check failed. Please ensure secure context.');
-    return;
-  }
-
-  // Show overlay while biometric prompt opens
-  const bioSub = document.getElementById('bio-sub');
-  bioSub.textContent = 'Use your fingerprint or Face ID to reveal your password.';
-  document.getElementById('bio-overlay').classList.add('open');
-
-  try {
-    const storedId = localStorage.getItem('bioCredId');
-
-    if (!storedId) {
-      // First time — register biometric
-      bioSub.textContent = 'First time setup — register your fingerprint or Face ID.';
-      await registerBiometric();
-    } else {
-      // Already registered — just verify
-      await verifyBiometric();
-    }
-
-    document.getElementById('bio-overlay').classList.remove('open');
-    revealPassword();
-
-  } catch (err) {
-    document.getElementById('bio-overlay').classList.remove('open');
-    if (err.name === 'NotAllowedError') {
-      showToast('Biometric verification cancelled or failed.');
-    } else if (err.name === 'InvalidStateError') {
-      // Credential already registered — try verify instead
-      try {
-        await verifyBiometric();
-        document.getElementById('bio-overlay').classList.remove('open');
-        revealPassword();
-      } catch(e) {
-        showToast('Verification failed. Try again.');
-      }
-    } else {
-      showToast('Biometric error. Make sure you are using a secure browser.');
-      console.error(err);
-    }
-  }
-}
-
-// Override showEditProfilePage to reset password visibility
 window.showEditProfilePage = function() {
   showPage('page-edit-profile', true);
   document.getElementById('edit-name').value = state.currentUser.name;
   document.getElementById('edit-phone').value = state.currentUser.phone;
-  hidePassword(); // Make sure it's hidden when entering the page
 }
 
 window.closeEditProfilePage = function() { navigate('home'); }
