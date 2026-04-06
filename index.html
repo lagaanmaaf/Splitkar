@@ -687,6 +687,54 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Auth Method Selector */
+.auth-method-row {
+  display: flex; gap: 8px; margin-bottom: 16px;
+}
+.auth-method-btn {
+  flex: 1; padding: 10px 6px; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); background: white; cursor: pointer;
+  font-size: 11px; font-weight: 700; color: var(--text-muted);
+  text-align: center; transition: all 0.15s; font-family: inherit;
+}
+.auth-method-btn.active {
+  border-color: var(--primary); background: var(--primary-light); color: var(--primary);
+}
+.auth-method-btn span { display: block; font-size: 20px; margin-bottom: 4px; }
+
+.pin-dots {
+  display: flex; justify-content: center; gap: 12px; margin: 16px 0;
+}
+.pin-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--border); background: white;
+  transition: all 0.15s;
+}
+.pin-dot.filled { background: var(--primary); border-color: var(--primary); }
+
+.pin-keypad {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  max-width: 260px; margin: 0 auto;
+}
+.pin-key {
+  padding: 16px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  background: white; font-size: 18px; font-weight: 700; cursor: pointer;
+  text-align: center; transition: background 0.1s, transform 0.1s;
+  font-family: inherit; color: var(--text);
+}
+.pin-key:active { background: var(--primary-light); transform: scale(0.95); }
+.pin-key.danger { color: var(--danger); border-color: var(--danger-light); }
+
+@keyframes pinShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+.pin-shake { animation: pinShake 0.4s ease; }
+
+* { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { display: none; }
+
   * { scrollbar-width: none; -ms-overflow-style: none; }
   *::-webkit-scrollbar { display: none; }
 </style>
@@ -1327,17 +1375,85 @@
     </div>
   </div>
 
-  <!-- Biometric Prompt Overlay -->
-  <div class="bio-overlay" id="bio-overlay">
-    <div class="bio-overlay-card">
-      <div class="bio-icon" id="bio-icon">🔐</div>
-      <div style="font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 8px;">Verify Identity</div>
-      <div id="bio-sub" style="font-size: 14px; color: var(--text-muted); line-height: 1.5; margin-bottom: 24px;">Use your fingerprint or Face ID to reveal your password.</div>
-      <button onclick="cancelBiometric()" style="background: none; border: 1.5px solid var(--border); border-radius: 100px; padding: 10px 28px; font-size: 14px; font-weight: 600; color: var(--text-muted); cursor: pointer;">Cancel</button>
+  <!-- Auth Overlay — Biometric / PIN / Password -->
+<div class="bio-overlay" id="bio-overlay">
+  <div class="bio-overlay-card" style="width: 92%; max-width: 340px;">
+    
+    <!-- Method Selector Tabs -->
+    <div class="auth-method-row">
+      <button class="auth-method-btn active" id="auth-tab-bio" onclick="switchAuthMethod('bio')">
+        <span>🔐</span>Biometric
+      </button>
+      <button class="auth-method-btn" id="auth-tab-pin" onclick="switchAuthMethod('pin')">
+        <span>🔢</span>PIN
+      </button>
+      <button class="auth-method-btn" id="auth-tab-pwd" onclick="switchAuthMethod('pwd')">
+        <span>🔑</span>Password
+      </button>
     </div>
-  </div>
 
-  <div class="toast" id="toast"></div>
+    <!-- BIOMETRIC SECTION -->
+    <div id="auth-section-bio">
+      <div class="bio-icon" id="bio-icon">🔐</div>
+      <div style="font-size: 17px; font-weight: 800; color: var(--text); margin-bottom: 8px;">Verify Identity</div>
+      <div id="bio-sub" style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px;">
+        Use your fingerprint or Face ID.
+      </div>
+      <button onclick="triggerBiometric()" 
+        style="width:100%; padding:14px; border-radius:100px; border:none; background:var(--primary); color:white; font-size:15px; font-weight:700; cursor:pointer; margin-bottom:10px;">
+        Verify with Biometric
+      </button>
+    </div>
+
+    <!-- PIN SECTION -->
+    <div id="auth-section-pin" style="display:none;">
+      <div style="font-size: 17px; font-weight: 800; color: var(--text); margin-bottom: 4px;">Enter PIN</div>
+      <div id="pin-status" style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+        Enter your 4-digit PIN
+      </div>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="dot-0"></div>
+        <div class="pin-dot" id="dot-1"></div>
+        <div class="pin-dot" id="dot-2"></div>
+        <div class="pin-dot" id="dot-3"></div>
+      </div>
+      <div class="pin-keypad">
+        <button class="pin-key" onclick="pinPress('1')">1</button>
+        <button class="pin-key" onclick="pinPress('2')">2</button>
+        <button class="pin-key" onclick="pinPress('3')">3</button>
+        <button class="pin-key" onclick="pinPress('4')">4</button>
+        <button class="pin-key" onclick="pinPress('5')">5</button>
+        <button class="pin-key" onclick="pinPress('6')">6</button>
+        <button class="pin-key" onclick="pinPress('7')">7</button>
+        <button class="pin-key" onclick="pinPress('8')">8</button>
+        <button class="pin-key" onclick="pinPress('9')">9</button>
+        <button class="pin-key" onclick="pinPress('clear')" style="font-size:13px;">CLR</button>
+        <button class="pin-key" onclick="pinPress('0')">0</button>
+        <button class="pin-key danger" onclick="pinPress('back')">⌫</button>
+      </div>
+    </div>
+
+    <!-- PASSWORD SECTION -->
+    <div id="auth-section-pwd" style="display:none;">
+      <div style="font-size: 17px; font-weight: 800; color: var(--text); margin-bottom: 4px;">Enter Password</div>
+      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Verify using your account password</div>
+      <input id="auth-pwd-input" type="password" class="form-input" placeholder="Your password" 
+        style="margin-bottom: 12px;" onkeydown="if(event.key==='Enter') verifyByPassword()" />
+      <div id="auth-pwd-error" style="font-size:12px; color:var(--danger); margin-bottom:10px; display:none;">
+        Incorrect password. Try again.
+      </div>
+      <button onclick="verifyByPassword()"
+        style="width:100%; padding:14px; border-radius:100px; border:none; background:var(--primary); color:white; font-size:15px; font-weight:700; cursor:pointer; margin-bottom:10px;">
+        Verify
+      </button>
+    </div>
+
+    <!-- Cancel always visible -->
+    <button onclick="cancelBiometric()" 
+      style="width:100%; background:none; border:1.5px solid var(--border); border-radius:100px; padding:10px; font-size:14px; font-weight:600; color:var(--text-muted); cursor:pointer; margin-top:8px;">
+      Cancel
+    </button>
+  </div>
 </div>
 
 <!-- Firebase SDK -->
@@ -1830,7 +1946,7 @@ window.deleteAccount = function() {
 }
 
 // ===================================================================
-//  BIOMETRIC PASSWORD REVEAL LOGIC
+//  PASSWORD REVEAL — BIOMETRIC + PIN + PASSWORD (WEB + MEDIAN)
 // ===================================================================
 
 function uint8ArrayToBase64(arr) {
@@ -1840,6 +1956,7 @@ function base64ToUint8Array(str) {
   return Uint8Array.from(atob(str), c => c.charCodeAt(0));
 }
 
+// ── Hide password ────────────────────────────────────────────────
 window.hidePassword = function() {
   isPasswordRevealed = false;
   const display = document.getElementById('edit-password-display');
@@ -1854,43 +1971,60 @@ window.hidePassword = function() {
   clearInterval(bioTimerInterval);
 }
 
+// ── Reveal password ──────────────────────────────────────────────
 window.revealPassword = function() {
   isPasswordRevealed = true;
   const display = document.getElementById('edit-password-display');
-  
-  // Safely grab password or fallback if none exists
   const realPwd = (state.currentUser && state.currentUser.password) ? state.currentUser.password : 'No password set';
-  
   display.textContent = realPwd;
   display.classList.add('revealed');
   document.getElementById('icon-eye').style.display = 'none';
   document.getElementById('icon-eye-off').style.display = 'block';
   showToast('Identity verified. Password revealed.');
 
-  // Auto-hide after 10 seconds
   let secondsLeft = 10;
   const timerEl = document.getElementById('pwd-hide-timer');
   timerEl.style.display = 'block';
   timerEl.textContent = `Hiding in ${secondsLeft}s`;
-
   bioTimerInterval = setInterval(() => {
     secondsLeft--;
     timerEl.textContent = `Hiding in ${secondsLeft}s`;
     if (secondsLeft <= 0) hidePassword();
   }, 1000);
-
   bioHideTimeout = setTimeout(hidePassword, 10000);
 }
 
+// ── Show / hide overlay ──────────────────────────────────────────
 window.cancelBiometric = function() {
   document.getElementById('bio-overlay').classList.remove('open');
+  pinEntry = '';
+  updatePinDots();
+  document.getElementById('auth-pwd-input').value = '';
+  document.getElementById('auth-pwd-error').style.display = 'none';
 }
 
-async function registerBiometric() {
+function openAuthOverlay() {
+  switchAuthMethod('bio'); // always start on biometric tab
+  document.getElementById('bio-overlay').classList.add('open');
+}
+
+// ── Switch auth method tab ───────────────────────────────────────
+window.switchAuthMethod = function(method) {
+  ['bio','pin','pwd'].forEach(m => {
+    document.getElementById('auth-tab-' + m).classList.toggle('active', m === method);
+    document.getElementById('auth-section-' + m).style.display = m === method ? 'block' : 'none';
+  });
+  if (method === 'pwd') {
+    setTimeout(() => document.getElementById('auth-pwd-input').focus(), 100);
+  }
+}
+
+// ── BIOMETRIC (WebAuthn for browser, Median bridge for app) ──────
+async function registerWebAuthn() {
   const challenge = crypto.getRandomValues(new Uint8Array(32));
   const publicKey = {
     challenge,
-    rp: { name: 'SplitEase', id: window.location.hostname || 'localhost' },
+    rp: { name: 'Splitkar', id: window.location.hostname || 'localhost' },
     user: {
       id: new TextEncoder().encode(state.currentUser.id || 'temp-id'),
       name: state.currentUser.phone || 'user',
@@ -1900,108 +2034,221 @@ async function registerBiometric() {
       { type: 'public-key', alg: -7 },
       { type: 'public-key', alg: -257 }
     ],
-    authenticatorSelection: {
-      authenticatorAttachment: 'platform',
-      userVerification: 'required'
-    },
+    authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
     timeout: 60000
   };
-
   const credential = await navigator.credentials.create({ publicKey });
-  const credentialId = uint8ArrayToBase64(new Uint8Array(credential.rawId));
-  localStorage.setItem('bioCredId', credentialId);
-  return credential;
+  localStorage.setItem('bioCredId', uint8ArrayToBase64(new Uint8Array(credential.rawId)));
 }
 
-async function verifyBiometric() {
+async function verifyWebAuthn() {
   const storedId = localStorage.getItem('bioCredId');
   const challenge = crypto.getRandomValues(new Uint8Array(32));
   const publicKey = {
     challenge,
     rpId: window.location.hostname || 'localhost',
-    allowCredentials: storedId ? [{
-      type: 'public-key',
-      id: base64ToUint8Array(storedId),
-      transports: ['internal']
-    }] : [],
+    allowCredentials: storedId ? [{ type: 'public-key', id: base64ToUint8Array(storedId), transports: ['internal'] }] : [],
     userVerification: 'required',
     timeout: 60000
   };
-
   await navigator.credentials.get({ publicKey });
 }
 
-window.handleShowPassword = async function() {
-  // If already revealed — hide it
+function runMedianBiometric() {
+  const bioSub = document.getElementById('bio-sub');
+
+  // Check if biometric is available on this device
+  median.auth.status({
+    callback: function(result) {
+      const hasAny = result.hasTouchId || result.hasFaceId || result.hasBiometrics;
+      if (!hasAny) {
+        bioSub.textContent = 'No biometric sensor found. Use PIN or Password instead.';
+        return;
+      }
+
+      const hasSaved = result.hasSecret;
+
+      if (!hasSaved) {
+        // First time — save a secret so we can verify later
+        bioSub.textContent = 'Setting up biometric for first time...';
+        median.auth.save({
+          secret: 'splitkar-bio-verify-' + (state.currentUser.id || 'user'),
+          prompt: 'Register your fingerprint or Face ID',
+          callback: function(saveResult) {
+            if (saveResult.success) {
+              bioSub.textContent = 'Biometric registered! Tap Verify to continue.';
+            } else {
+              bioSub.textContent = 'Setup failed. Use PIN or Password instead.';
+            }
+          }
+        });
+      } else {
+        // Already registered — verify
+        median.auth.get({
+          prompt: 'Verify your identity to reveal password',
+          callback: function(getResult) {
+            if (getResult.success) {
+              document.getElementById('bio-overlay').classList.remove('open');
+              revealPassword();
+            } else {
+              bioSub.textContent = 'Biometric failed. Try again or use PIN/Password.';
+            }
+          }
+        });
+      }
+    }
+  });
+}
+
+window.triggerBiometric = async function() {
+  const isMedianApp = window.gonative !== undefined || window.median !== undefined;
+
+  if (isMedianApp) {
+    // ── Median native bridge ──
+    runMedianBiometric();
+  } else {
+    // ── WebAuthn for browser ──
+    if (!window.PublicKeyCredential) {
+      document.getElementById('bio-sub').textContent = 'Biometric not supported. Use PIN or Password.';
+      return;
+    }
+    try {
+      const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      if (!available) {
+        document.getElementById('bio-sub').textContent = 'No biometric sensor found. Use PIN or Password.';
+        return;
+      }
+    } catch(e) {
+      document.getElementById('bio-sub').textContent = 'Biometric check failed. Use PIN or Password.';
+      return;
+    }
+
+    try {
+      const storedId = localStorage.getItem('bioCredId');
+      if (!storedId) {
+        document.getElementById('bio-sub').textContent = 'First time — registering your biometric...';
+        await registerWebAuthn();
+      }
+      await verifyWebAuthn();
+      document.getElementById('bio-overlay').classList.remove('open');
+      revealPassword();
+    } catch(err) {
+      if (err.name === 'NotAllowedError') {
+        document.getElementById('bio-sub').textContent = 'Verification cancelled. Try again or use PIN/Password.';
+      } else if (err.name === 'InvalidStateError') {
+        try {
+          await verifyWebAuthn();
+          document.getElementById('bio-overlay').classList.remove('open');
+          revealPassword();
+        } catch(e) {
+          document.getElementById('bio-sub').textContent = 'Verification failed. Use PIN or Password.';
+        }
+      } else {
+        document.getElementById('bio-sub').textContent = 'Error: ' + err.message;
+      }
+    }
+  }
+}
+
+// ── PIN auth ─────────────────────────────────────────────────────
+let pinEntry = '';
+const PIN_LENGTH = 4;
+
+window.pinPress = function(key) {
+  if (key === 'clear') {
+    pinEntry = '';
+  } else if (key === 'back') {
+    pinEntry = pinEntry.slice(0, -1);
+  } else {
+    if (pinEntry.length >= PIN_LENGTH) return;
+    pinEntry += key;
+  }
+  updatePinDots();
+  if (pinEntry.length === PIN_LENGTH) {
+    setTimeout(checkPin, 150); // small delay so last dot fills visually
+  }
+}
+
+function updatePinDots() {
+  for (let i = 0; i < PIN_LENGTH; i++) {
+    const dot = document.getElementById('dot-' + i);
+    if (dot) dot.classList.toggle('filled', i < pinEntry.length);
+  }
+}
+
+function checkPin() {
+  const savedPin = localStorage.getItem('splitkarPin');
+
+  if (!savedPin) {
+    // No PIN set yet — treat current entry as new PIN setup
+    if (pinEntry.length === PIN_LENGTH) {
+      localStorage.setItem('splitkarPin', pinEntry);
+      document.getElementById('pin-status').textContent = 'PIN set! Enter it again to verify.';
+      pinEntry = '';
+      updatePinDots();
+    }
+    return;
+  }
+
+  if (pinEntry === savedPin) {
+    // Correct
+    pinEntry = '';
+    updatePinDots();
+    document.getElementById('bio-overlay').classList.remove('open');
+    revealPassword();
+  } else {
+    // Wrong — shake and reset
+    const dotsEl = document.getElementById('pin-dots');
+    dotsEl.classList.add('pin-shake');
+    setTimeout(() => dotsEl.classList.remove('pin-shake'), 400);
+    document.getElementById('pin-status').textContent = 'Wrong PIN. Try again.';
+    setTimeout(() => {
+      pinEntry = '';
+      updatePinDots();
+      document.getElementById('pin-status').textContent = 'Enter your 4-digit PIN';
+    }, 600);
+  }
+}
+
+// Allow user to reset PIN from profile page
+window.resetPin = function() {
+  localStorage.removeItem('splitkarPin');
+  showToast('PIN cleared. Enter a new one next time you verify.');
+}
+
+// ── Password auth ─────────────────────────────────────────────────
+window.verifyByPassword = function() {
+  const input = document.getElementById('auth-pwd-input').value;
+  const errorEl = document.getElementById('auth-pwd-error');
+  if (!input) return;
+
+  if (input === state.currentUser.password) {
+    errorEl.style.display = 'none';
+    document.getElementById('auth-pwd-input').value = '';
+    document.getElementById('bio-overlay').classList.remove('open');
+    revealPassword();
+  } else {
+    errorEl.style.display = 'block';
+    document.getElementById('auth-pwd-input').value = '';
+    document.getElementById('auth-pwd-input').focus();
+  }
+}
+
+// ── Main entry point (eye button click) ──────────────────────────
+window.handleShowPassword = function() {
   if (isPasswordRevealed) {
     hidePassword();
     return;
   }
-
-  // Check WebAuthn support
-  if (!window.PublicKeyCredential) {
-    showToast('Biometric auth is not supported on this device/browser.');
-    return;
-  }
-
-  try {
-    // Check platform authenticator (fingerprint/faceID)
-    const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    if (!available) {
-      showToast('No biometric sensor found on this device.');
-      return;
-    }
-  } catch(e) {
-    showToast('Biometric check failed. Please ensure secure context.');
-    return;
-  }
-
-  // Show overlay while biometric prompt opens
-  const bioSub = document.getElementById('bio-sub');
-  bioSub.textContent = 'Use your fingerprint or Face ID to reveal your password.';
-  document.getElementById('bio-overlay').classList.add('open');
-
-  try {
-    const storedId = localStorage.getItem('bioCredId');
-
-    if (!storedId) {
-      // First time — register biometric
-      bioSub.textContent = 'First time setup — register your fingerprint or Face ID.';
-      await registerBiometric();
-    } else {
-      // Already registered — just verify
-      await verifyBiometric();
-    }
-
-    document.getElementById('bio-overlay').classList.remove('open');
-    revealPassword();
-
-  } catch (err) {
-    document.getElementById('bio-overlay').classList.remove('open');
-    if (err.name === 'NotAllowedError') {
-      showToast('Biometric verification cancelled or failed.');
-    } else if (err.name === 'InvalidStateError') {
-      // Credential already registered — try verify instead
-      try {
-        await verifyBiometric();
-        document.getElementById('bio-overlay').classList.remove('open');
-        revealPassword();
-      } catch(e) {
-        showToast('Verification failed. Try again.');
-      }
-    } else {
-      showToast('Biometric error. Make sure you are using a secure browser.');
-      console.error(err);
-    }
-  }
+  openAuthOverlay();
 }
 
-// Override showEditProfilePage to reset password visibility
+// ── Edit Profile page ─────────────────────────────────────────────
 window.showEditProfilePage = function() {
   showPage('page-edit-profile', true);
   document.getElementById('edit-name').value = state.currentUser.name;
   document.getElementById('edit-phone').value = state.currentUser.phone;
-  hidePassword(); // Make sure it's hidden when entering the page
+  hidePassword();
 }
 
 window.closeEditProfilePage = function() { navigate('home'); }
