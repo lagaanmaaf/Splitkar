@@ -3436,8 +3436,7 @@ window.updateExpense = async function() {
     const dateInput = document.getElementById('exp-date').value;
     const expenseDate = dateInput ? new Date(dateInput).toISOString() : new Date().toISOString();
 
-    // Updating createdAt brings this expense out of the "Settled" list and into active expenses
-    const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate, createdAt: new Date().toISOString() };
+    const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate };
     await updateDoc(doc(db, 'expenses', editingExpenseId), updatedData);
     
     const actData = {
