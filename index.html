@@ -2519,49 +2519,6 @@ window.settleAllExpenses = function() {
   });
 }
 
-window.settleSingleExpense = async function(expId) {
-  const exp = state.expenses.find(e => e.id === expId);
-  if (!exp) return;
-  const grp = groupById(exp.groupId);
-  const balances = calcGroupBalances(exp.groupId);
-  
-  // Find balances that involve the payer of this specific expense
-  const relevantBalances = balances.filter(b => b.fromId === exp.paidBy || b.toId === exp.paidBy);
-  
-  if (relevantBalances.length === 0) { showToast('No outstanding balance for this expense'); return; }
-
-  const ok = await showConfirm('Settle This Expense', `Settle the updated balance for "${exp.desc}"?`);
-  if (!ok) return;
-
-  try {
-    // Mark the expense as settled by clearing updatedAt (set it to a time before settlement)
-    // We do this by recording a new settlement and resetting updatedAt
-    for (const b of relevantBalances) {
-      const settlData = {
-        groupId: exp.groupId, fromId: b.fromId, toId: b.toId,
-        amount: b.amount, note: `Settled: ${exp.desc}`, 
-        date: new Date().toISOString(), createdAt: new Date().toISOString()
-      };
-      await fsAddSettlement(settlData);
-      const fromU = userById(b.fromId);
-      const toU = userById(b.toId);
-      const actData = {
-        type: 'settlement', groupId: exp.groupId, actorId: state.currentUser.id,
-        desc: `${fromU.name} paid ${toU.name} ${fmt(b.amount)} (settled "${exp.desc}")`,
-        amount: b.amount, date: new Date().toISOString()
-      };
-      await fsAddActivity(actData);
-    }
-    // Clear updatedAt on the expense so green dot disappears and button hides
-    await updateDoc(doc(db, 'expenses', expId), { updatedAt: null });
-    showToast('Expense settled! ✅');
-    closeExpenseDetail();
-  } catch(e) {
-    showToast('Error settling expense');
-    console.error(e);
-  }
-}
-
 window.addExpense = async function() {
   let desc = document.getElementById('exp-desc').value.trim();
   if (desc) desc = desc.charAt(0).toUpperCase() + desc.slice(1);
@@ -2847,7 +2804,7 @@ function renderGroups() {
   }).join('');
 }
 
-function generateExpenseListHTML(expList, group, latestSettlementTime = 0) {
+function generateExpenseListHTML(expList, group) {
   let currentMonthStr = '';
   let expHTML = '';
   expList.forEach(exp => {
@@ -2880,10 +2837,8 @@ function generateExpenseListHTML(expList, group, latestSettlementTime = 0) {
       statusText = 'you borrowed'; shareValue = fmt(myShare); statusColor = 'var(--borrowed)';
     }
     const payerText = iAmPayer ? `You paid ${fmt(exp.amount)}` : `${payer?.name || 'Unknown'} paid ${fmt(exp.amount)}`;
-    const isEditedAfterSettle = latestSettlementTime > 0 && exp.updatedAt && new Date(exp.updatedAt).getTime() > latestSettlementTime;
     expHTML += `
-    <div class="list-item" onclick="openExpenseDetail('${exp.id}')" style="border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 16px 0; background: transparent; margin-bottom: 0; position: relative;">
-      ${isEditedAfterSettle ? `<span style="position:absolute;top:12px;right:0;width:9px;height:9px;background:#22c55e;border-radius:50%;box-shadow:0 0 0 2px white;"></span>` : ''}
+    <div class="list-item" onclick="openExpenseDetail('${exp.id}')" style="border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 16px 0; background: transparent; margin-bottom: 0;">
       <div style="display: flex; flex-direction: column; align-items: center; width: 36px; flex-shrink: 0; text-align: left; align-items: flex-start;">
         <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">${monthShort}</span>
         <span style="font-size: 18px; color: var(--text);">${dayStr}</span>
@@ -2970,14 +2925,14 @@ function renderGroupDetail(groupId) {
       activeExpenses = expenses;
     }
     
-    let expHTML = generateExpenseListHTML(activeExpenses, group, 0);
+    let expHTML = generateExpenseListHTML(activeExpenses, group);
     if (settledExpenses.length > 0) {
       expHTML += `
         <div id="settled-expenses-toggle" onclick="toggleSettledExpenses()" style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 24px 0; line-height: 1.5; cursor: pointer; text-decoration: underline;">
           All expenses before this date have been settled up. Tap to show settled expenses.
         </div>
         <div id="settled-expenses-container" style="display: none;">
-          ${generateExpenseListHTML(settledExpenses, group, latestSettlementTime)}
+          ${generateExpenseListHTML(settledExpenses, group)}
         </div>`;
     }
     expEl.innerHTML = expHTML;
@@ -2993,31 +2948,6 @@ function renderExpenseDetail() {
   document.getElementById('detail-expense-amount').textContent = fmt(exp.amount);
   const payer = userById(exp.paidBy);
   document.getElementById('detail-expense-paidby').textContent = `Paid by ${payer.id === state.currentUser.id ? 'You' : payer.name}`;
-
-  // Determine if this expense is a "settled but edited" expense
-  const groupSettlements = state.settlements.filter(s => s.groupId === exp.groupId);
-  let latestSettlementTime = 0;
-  if (groupSettlements.length > 0) {
-    latestSettlementTime = Math.max(...groupSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
-  }
-  const isSettledButEdited = latestSettlementTime > 0 
-    && exp.updatedAt 
-    && new Date(exp.updatedAt).getTime() > latestSettlementTime
-    && toDate(exp.createdAt || exp.date).getTime() <= latestSettlementTime;
-
-  // Show/hide the "Settle This Expense" button
-  const existingSettleBtn = document.getElementById('settle-single-expense-btn');
-  if (existingSettleBtn) existingSettleBtn.remove();
-
-  if (isSettledButEdited) {
-    const settleBtn = document.createElement('button');
-    settleBtn.id = 'settle-single-expense-btn';
-    settleBtn.className = 'btn btn-primary';
-    settleBtn.style.cssText = 'margin: 16px 0 0; background: var(--primary);';
-    settleBtn.textContent = '✓ Settle This Expense';
-    settleBtn.onclick = () => settleSingleExpense(exp.id);
-    document.getElementById('detail-expense-splits').after(settleBtn);
-  }
   const splitsEl = document.getElementById('detail-expense-splits');
   const involvedMembers = (exp.splitAmong && exp.splitAmong.length > 0) ? exp.splitAmong : grp.memberIds;
   splitsEl.innerHTML = involvedMembers.map(uid => {
@@ -3229,7 +3159,7 @@ window.updateExpense = async function() {
     const expenseDate = dateInput ? new Date(dateInput).toISOString() : new Date().toISOString();
 
     // Updating createdAt brings this expense out of the "Settled" list and into active expenses
-    const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate, updatedAt: new Date().toISOString() };
+    const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate, createdAt: new Date().toISOString() };
     await updateDoc(doc(db, 'expenses', editingExpenseId), updatedData);
     
     const actData = {
