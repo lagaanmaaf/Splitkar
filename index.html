@@ -2488,7 +2488,8 @@ window.settleAllExpenses = function() {
       for (const b of balances) {
         const settlData = {
           groupId: state.currentGroupId, fromId: b.fromId, toId: b.toId,
-          amount: b.amount, note: 'Settle All', date: new Date().toISOString()
+          amount: b.amount, note: 'Settle All', date: new Date().toISOString(),
+          createdAt: new Date().toISOString()
         };
         await fsAddSettlement(settlData);
         
@@ -2558,7 +2559,8 @@ window.addExpense = async function() {
 
     const expData = {
       groupId, desc, amount, category, paidBy, splitType,
-      splitAmong, shares, percentages, date: expenseDate
+      splitAmong, shares, percentages, date: expenseDate,
+      createdAt: new Date().toISOString()
     };
     await fsAddExpense(expData);
     
@@ -2649,7 +2651,7 @@ window.confirmSettle = async function() {
   const note = document.getElementById('settle-note').value.trim();
   if (!amount || amount <= 0) { showToast('Invalid amount'); return; }
   try {
-    const settlData = { ...settleContext, amount, note, date: new Date().toISOString() };
+    const settlData = { ...settleContext, amount, note, date: new Date().toISOString(), createdAt: new Date().toISOString() };
     await fsAddSettlement(settlData);
     
     const from = userById(settleContext.fromId), to = userById(settleContext.toId);
@@ -2898,17 +2900,19 @@ function renderGroupDetail(groupId) {
     </div>`;
   } else {
     const groupSettlements = state.settlements.filter(s => s.groupId === groupId);
-    let latestSettlementDate = null;
+    let latestSettlementTime = 0;
     if (groupSettlements.length > 0) {
-      latestSettlementDate = new Date(Math.max(...groupSettlements.map(s => toDate(s.date))));
+      latestSettlementTime = Math.max(...groupSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
     }
+    
     let activeExpenses = [], settledExpenses = [];
-    if (latestSettlementDate) {
-      activeExpenses = expenses.filter(e => toDate(e.date) >= latestSettlementDate);
-      settledExpenses = expenses.filter(e => toDate(e.date) < latestSettlementDate);
+    if (latestSettlementTime > 0) {
+      activeExpenses = expenses.filter(e => toDate(e.createdAt || e.date).getTime() > latestSettlementTime);
+      settledExpenses = expenses.filter(e => toDate(e.createdAt || e.date).getTime() <= latestSettlementTime);
     } else {
       activeExpenses = expenses;
     }
+    
     let expHTML = generateExpenseListHTML(activeExpenses, group);
     if (settledExpenses.length > 0) {
       expHTML += `
