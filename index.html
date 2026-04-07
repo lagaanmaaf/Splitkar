@@ -2879,8 +2879,28 @@
             }
           }
 
+          // --- NEW FIX START: Clean up related Delta Settlements ---
+          const deltaSettlements = state.settlements.filter(s => 
+            s.groupId === grpId && s.isDeltaSettle && (s.note || '').includes(exp.desc)
+          );
+          for (const ds of deltaSettlements) {
+            await deleteDoc(doc(db, 'settlements', ds.id));
+          }
+          // --- NEW FIX END ---
+
           // Delete the expense itself
           await fsDeleteExpense(state.currentExpenseId);
+
+          // --- NEW FIX START: Total Wipe if Group is Empty ---
+          // If this was the last expense, wipe ALL remaining settlements to prevent phantom credits
+          const remainingExps = state.expenses.filter(e => e.groupId === grpId && e.id !== state.currentExpenseId);
+          if (remainingExps.length === 0) {
+            const allSettlements = state.settlements.filter(s => s.groupId === grpId);
+            for (const s of allSettlements) {
+              await deleteDoc(doc(db, 'settlements', s.id));
+            }
+          }
+          // --- NEW FIX END ---
 
           const actData = {
             type: 'expense_added', groupId: grpId, actorId: state.currentUser.id,
