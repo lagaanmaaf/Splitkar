@@ -1494,6 +1494,7 @@
       else if (/(shopping)/i.test(d)) img = 'shopping.png';
       else if (/(trip|travel)/i.test(d)) img = 'trip.png';
       else if (/(food)/i.test(d)) img = 'food.png';
+      else if (/(Coffee)/i.test(d)) img = 'coffee.png';
       else img = 'def.png';
 
       return `<img src="${img}" alt="${desc}" style="width:30px;height:30px;object-fit:cover;border-radius:6px;" onerror="this.src='def.png';" />`;
