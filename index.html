@@ -945,8 +945,9 @@
           <div id="detail-expense-meta" style="font-size:12px;color:var(--text-muted);"></div>
         </div>
         <div style="display:flex; gap:8px;">
+          <button id="btn-settle-edited-expense" style="display:none; background:var(--primary);color:white;border:none;border-radius:100px;padding:0 14px;height:36px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="settleEditedExpense()">Settle</button>
           <button class="btn-icon" style="background:var(--primary-light);color:var(--primary);border:none;width:36px;height:36px;" onclick="editCurrentExpense()" title="Edit Expense">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
           </button>
           <button class="btn-icon" style="background:var(--danger-light);color:var(--danger);border:none;width:36px;height:36px;" onclick="deleteCurrentExpense()" title="Delete Expense">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -2809,7 +2810,7 @@
         if (!exp) return;
 
         try {
-          const groupSettlements = state.settlements.filter(s => s.groupId === grpId);
+          const groupSettlements = state.settlements.filter(s => s.groupId === grpId && !s.isDeltaSettle);
           let latestSettlementTime = 0;
           if (groupSettlements.length > 0) {
             latestSettlementTime = Math.max(...groupSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
@@ -2894,6 +2895,132 @@
           showToast("Expense deleted");
         } catch(e) {
           showToast('Error deleting expense');
+          console.error(e);
+        }
+      });
+    }
+
+    function calcExpenseContribution(expSnapshot, groupMembers) {
+      // Returns a map of { "fromId->toId": amount } showing what this expense
+      // makes each person owe each other
+      const owes = {};
+      const involved = expSnapshot.splitAmong && expSnapshot.splitAmong.length > 0
+        ? expSnapshot.splitAmong : groupMembers;
+
+      involved.forEach(uid => {
+        if (uid === expSnapshot.paidBy) return;
+        let share = 0;
+        if (expSnapshot.splitType === 'equally') {
+          share = expSnapshot.amount / involved.length;
+        } else if (expSnapshot.splitType === 'unequally' || expSnapshot.splitType === 'fullAmount') {
+          share = (expSnapshot.shares && expSnapshot.shares[uid]) || 0;
+        } else if (expSnapshot.splitType === 'percentage') {
+          share = expSnapshot.amount * ((expSnapshot.percentages && expSnapshot.percentages[uid]) || 0) / 100;
+        }
+        if (share > 0.005) {
+          const key = `${uid}->${expSnapshot.paidBy}`;
+          owes[key] = (owes[key] || 0) + share;
+        }
+      });
+      return owes;
+    }
+
+    window.settleEditedExpense = function() {
+      const exp = state.expenses.find(e => e.id === state.currentExpenseId);
+      if (!exp) return;
+
+      if (!exp.previousSnapshot) {
+        showToast('No previous snapshot found. Use group Settle instead.');
+        return;
+      }
+
+      const grp = groupById(exp.groupId);
+      const members = grp.memberIds;
+
+      // What the expense contributed BEFORE the edit
+      const oldContrib = calcExpenseContribution(exp.previousSnapshot, members);
+
+      // What the expense contributes NOW after the edit
+      const newContrib = calcExpenseContribution({
+        amount: exp.amount,
+        paidBy: exp.paidBy,
+        splitType: exp.splitType,
+        splitAmong: exp.splitAmong,
+        shares: exp.shares,
+        percentages: exp.percentages
+      }, members);
+
+      // Collect all unique pair keys from both old and new
+      const allKeys = new Set([...Object.keys(oldContrib), ...Object.keys(newContrib)]);
+
+      // Delta = new - old for each pair
+      const deltas = [];
+      allKeys.forEach(key => {
+        const oldAmt = oldContrib[key] || 0;
+        const newAmt = newContrib[key] || 0;
+        const delta = newAmt - oldAmt;
+        if (Math.abs(delta) > 0.005) {
+          const [fromId, toId] = key.split('->');
+          if (delta > 0) {
+            // fromId owes toId MORE than before
+            deltas.push({ fromId, toId, amount: delta });
+          } else {
+            // fromId actually owes toId LESS than before — toId owes fromId the difference
+            deltas.push({ fromId: toId, toId: fromId, amount: Math.abs(delta) });
+          }
+        }
+      });
+
+      if (deltas.length === 0) {
+        showToast('No balance change to settle.');
+        return;
+      }
+
+      // Build a readable summary for the confirm dialog
+      const summary = deltas.map(d => {
+        const fromU = userById(d.fromId);
+        const toU = userById(d.toId);
+        const fromName = d.fromId === state.currentUser.id ? 'You' : fromU?.name || d.fromId;
+        const toName = d.toId === state.currentUser.id ? 'you' : toU?.name || d.toId;
+        return `${fromName} owe${fromName === 'You' ? '' : 's'} ${toName} ${fmt(d.amount)} more`;
+      }).join('\n');
+
+      showConfirm('Settle Edit Difference', `Settling only the change caused by editing "${exp.desc}":\n\n${summary}`).then(async ok => {
+        if (!ok) return;
+        try {
+          for (const d of deltas) {
+            const settlData = {
+              groupId: exp.groupId,
+              fromId: d.fromId,
+              toId: d.toId,
+              amount: d.amount,
+              note: `Delta settle after editing: ${exp.desc}`,
+              date: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              isDeltaSettle: true
+            };
+            await fsAddSettlement(settlData);
+
+            const fromU = userById(d.fromId);
+            const toU = userById(d.toId);
+            const actData = {
+              type: 'settlement',
+              groupId: exp.groupId,
+              actorId: state.currentUser.id,
+              desc: `${fromU?.name} paid ${toU?.name} ${fmt(d.amount)} (edit difference for "${exp.desc}")`,
+              amount: d.amount,
+              date: new Date().toISOString()
+            };
+            await fsAddActivity(actData);
+          }
+
+          // Clear previousSnapshot now that delta is settled
+          await updateDoc(doc(db, 'expenses', exp.id), { previousSnapshot: null, updatedAt: null });
+
+          showToast('Edit difference settled! 🎉');
+          document.getElementById('btn-settle-edited-expense').style.display = 'none';
+        } catch(e) {
+          showToast('Error settling difference');
           console.error(e);
         }
       });
@@ -3305,7 +3432,7 @@ window.openRenameGroupModal = function() {
 
         expHTML += `
         <div class="list-item" onclick="openExpenseDetail('${exp.id}')" style="border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 16px 0; background: transparent; margin-bottom: 0; position: relative;">
-          ${isEditedAfterSettle ? `<span style="position:absolute;top:14px;right:2px;width:9px;height:9px;background:#22c55e;border-radius:50%;box-shadow:0 0 0 2px white;z-index:2;"></span>` : ''}
+          ${isEditedAfterSettle ? `<span style="position:absolute;top:32px;right:393px;width:9px;height:9px;background:#22c55e;border-radius:50%;box-shadow:0 0 0 2px white;z-index:2;"></span>` : ''}
           <div style="display: flex; flex-direction: column; align-items: center; width: 36px; flex-shrink: 0; text-align: left; align-items: flex-start;">
             <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">${monthShort}</span>
             <span style="font-size: 18px; color: var(--text);">${dayStr}</span>
@@ -3378,7 +3505,7 @@ window.openRenameGroupModal = function() {
           <div class="empty-sub">Add the first expense for this group.</div>
         </div>`;
       } else {
-        const groupSettlements = state.settlements.filter(s => s.groupId === groupId);
+        const groupSettlements = state.settlements.filter(s => s.groupId === groupId && !s.isDeltaSettle);
         let latestSettlementTime = 0;
         if (groupSettlements.length > 0) {
           latestSettlementTime = Math.max(...groupSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
@@ -3413,6 +3540,20 @@ window.openRenameGroupModal = function() {
       const exp = state.expenses.find(e => e.id === state.currentExpenseId);
       if(!exp) return;
       const grp = groupById(exp.groupId);
+
+      // Show/hide settle button for edited-after-settlement expenses
+      const groupSettlements = state.settlements.filter(s => s.groupId === exp.groupId && !s.isDeltaSettle);
+      let latestSettlementTime = 0;
+      if (groupSettlements.length > 0) {
+        latestSettlementTime = Math.max(...groupSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
+      }
+      const isEditedAfterSettle = latestSettlementTime > 0
+        && exp.updatedAt
+        && new Date(exp.updatedAt).getTime() > latestSettlementTime
+        && toDate(exp.createdAt || exp.date).getTime() <= latestSettlementTime;
+      const settleBtn = document.getElementById('btn-settle-edited-expense');
+      if (settleBtn) settleBtn.style.display = isEditedAfterSettle ? 'inline-flex' : 'none';
+
       document.getElementById('detail-expense-title').textContent = exp.desc;
       document.getElementById('detail-expense-meta').textContent = relTime(exp.date);
       document.getElementById('detail-expense-amount').textContent = fmt(exp.amount);
@@ -3628,7 +3769,18 @@ window.openRenameGroupModal = function() {
         const dateInput = document.getElementById('exp-date').value;
         const expenseDate = dateInput ? new Date(dateInput).toISOString() : new Date().toISOString();
 
-        const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate, updatedAt: new Date().toISOString() };
+        // Save old snapshot for delta calculation
+        const oldExp = state.expenses.find(e => e.id === editingExpenseId);
+        const previousSnapshot = {
+          amount: oldExp.amount,
+          paidBy: oldExp.paidBy,
+          splitType: oldExp.splitType,
+          splitAmong: oldExp.splitAmong ? [...oldExp.splitAmong] : [],
+          shares: oldExp.shares ? { ...oldExp.shares } : {},
+          percentages: oldExp.percentages ? { ...oldExp.percentages } : {}
+        };
+
+        const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate, updatedAt: new Date().toISOString(), previousSnapshot };
         await updateDoc(doc(db, 'expenses', editingExpenseId), updatedData);
         
         const actData = {
