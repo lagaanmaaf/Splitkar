@@ -119,7 +119,7 @@
     .page.active { display: flex; }
 
     #page-group-detail, #page-add-expense, #page-split-details, #page-landing, #page-auth, #page-edit-profile, #page-expense-detail,
-    #page-select-payer, #page-adjust-split, #page-join-group {
+    #page-select-payer, #page-adjust-split, #page-join-group, #page-settlement-detail {
       z-index: 50;
     }
 
@@ -945,16 +945,15 @@
           <div id="detail-expense-meta" style="font-size:12px;color:var(--text-muted);"></div>
         </div>
         <div style="display:flex; gap:8px;">
-          <button id="btn-settle-edited-expense" style="display:none; background:var(--primary);color:white;border:none;border-radius:100px;padding:0 14px;height:36px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="settleEditedExpense()">Settle</button>
           <button class="btn-icon" style="background:var(--primary-light);color:var(--primary);border:none;width:36px;height:36px;" onclick="editCurrentExpense()" title="Edit Expense">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
           </button>
           <button class="btn-icon" style="background:var(--danger-light);color:var(--danger);border:none;width:36px;height:36px;" onclick="deleteCurrentExpense()" title="Delete Expense">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
           </button>
         </div>
       </div>
-      <div class="page-content" style="padding-top: 0;">
+      <div class="page-content" style="padding-top: 0; padding-bottom: 40px;">
         <div style="text-align: center; margin: 20px 0 30px;">
           <div style="font-size: 13px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Total Amount</div>
           <div id="detail-expense-amount" style="font-size: 42px; font-weight: 800; color: var(--text);"></div>
@@ -962,6 +961,24 @@
         </div>
         <div class="section-title">Split Details</div>
         <div id="detail-expense-splits" style="display:flex; flex-direction:column; gap:8px;"></div>
+        
+        <!-- Edit History Section -->
+        <div id="detail-expense-history" style="display:none; padding-bottom: 24px;"></div>
+      </div>
+    </div>
+
+    <!-- SETTLEMENT DETAIL PAGE -->
+    <div class="page" id="page-settlement-detail" style="padding-bottom: 0;">
+      <div class="detail-header">
+        <button class="back-btn" onclick="closeSettlementDetail()" style="border: 1.5px solid var(--border); color: var(--text);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="page-title" style="font-size: 20px; flex:1; text-align:center;">Settlement Details</div>
+        <div style="width:38px;"></div>
+      </div>
+      <div class="page-content">
+        <div id="settlement-detail-content"></div>
+        <button class="btn btn-danger" style="width:100%; margin-top:24px; font-size:16px;" onclick="deleteCurrentSettlement()">Delete Settlement</button>
       </div>
     </div>
 
@@ -1386,8 +1403,10 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, query, where, serverTimestamp, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    const firebaseConfig = {
+    // Setup strictly defined Canvas environment database paths and rules
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
       apiKey: "AIzaSyCxprFyqxdNWRTtmXkn_lCK72k_d3hgKTM",
       authDomain: "splitkar-2c431.firebaseapp.com",
       projectId: "splitkar-2c431",
@@ -1398,6 +1417,12 @@
 
     const firebaseApp = initializeApp(firebaseConfig);
     const db = getFirestore(firebaseApp);
+    const auth = getAuth(firebaseApp);
+    const __appId = typeof __app_id !== 'undefined' ? __app_id : 'split-ease';
+
+    // Helper functions to abide by strictly required artifacts public data path
+    function getColl(name) { return collection(db, 'artifacts', __appId, 'public', 'data', name); }
+    function getDocRef(name, id) { return doc(db, 'artifacts', __appId, 'public', 'data', name, id); }
 
     // ===================================================================
     //  CONSTANTS & STATE
@@ -1413,6 +1438,7 @@
       currentUser: null,
       currentGroupId: null,
       currentExpenseId: null,
+      currentSettlementId: null,
       settleTarget: null,
       deleteGroupMode: false,
       deleteFriendMode: false,
@@ -1534,7 +1560,7 @@
       let code, exists;
       do {
         code = Array.from({length: 6}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        const q = query(collection(db, 'groups'), where('code', '==', code));
+        const q = query(getColl('groups'), where('code', '==', code));
         const snap = await getDocs(q);
         exists = !snap.empty;
       } while (exists);
@@ -1542,7 +1568,7 @@
     }
 
     async function fsGetUser(phone) {
-      const q = query(collection(db, 'users'), where('phone', '==', phone));
+      const q = query(getColl('users'), where('phone', '==', phone));
       const snap = await getDocs(q);
       if (snap.empty) return null;
       const docSnap = snap.docs[0];
@@ -1550,20 +1576,20 @@
     }
 
     async function fsCreateUser(userData) {
-      const ref = await addDoc(collection(db, 'users'), userData);
+      const ref = await addDoc(getColl('users'), userData);
       return { id: ref.id, ...userData };
     }
 
     async function fsUpdateUser(userId, data) {
-      await updateDoc(doc(db, 'users', userId), data);
+      await updateDoc(getDocRef('users', userId), data);
     }
 
     async function fsDeleteUser(userId) {
-      await deleteDoc(doc(db, 'users', userId));
+      await deleteDoc(getDocRef('users', userId));
     }
 
     async function fsGetUserById(userId) {
-      const docSnap = await getDoc(doc(db, 'users', userId));
+      const docSnap = await getDoc(getDocRef('users', userId));
       if (!docSnap.exists()) return null;
       return { id: docSnap.id, ...docSnap.data() };
     }
@@ -1594,15 +1620,13 @@
         if (!state.currentUser) return resolve();
         const uid = state.currentUser.id;
 
-        // Clean up previous listeners
         globalUnsubs.forEach(u => u());
         globalUnsubs = [];
         dataUnsubs.forEach(u => u());
         dataUnsubs = [];
 
-        // Query groups where user is active AND groups where user was removed
-        const qActive = query(collection(db, 'groups'), where('memberIds', 'array-contains', uid));
-        const qRemoved = query(collection(db, 'groups'), where('removedMembers', 'array-contains', uid));
+        const qActive = query(getColl('groups'), where('memberIds', 'array-contains', uid));
+        const qRemoved = query(getColl('groups'), where('removedMembers', 'array-contains', uid));
 
         let activeGroups = [];
         let removedGroups = [];
@@ -1658,9 +1682,9 @@
       groups.forEach(g => {
          groupData[g.id] = { exps: [], setts: [], acts: [] };
 
-         const eq = query(collection(db, 'expenses'), where('groupId', '==', g.id));
-         const sq = query(collection(db, 'settlements'), where('groupId', '==', g.id));
-         const aq = query(collection(db, 'activity'), where('groupId', '==', g.id));
+         const eq = query(getColl('expenses'), where('groupId', '==', g.id));
+         const sq = query(getColl('settlements'), where('groupId', '==', g.id));
+         const aq = query(getColl('activity'), where('groupId', '==', g.id));
 
          const u1 = onSnapshot(eq, snap => {
              groupData[g.id].exps = snap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -1692,7 +1716,6 @@
       reRenderCurrentPage();
     }
 
-    // Master UI Update Function
     function reRenderCurrentPage() {
       if (document.getElementById('page-home').classList.contains('active')) renderDashboard();
       if (document.getElementById('page-groups').classList.contains('active')) renderGroups();
@@ -1708,50 +1731,58 @@
       
       const infoModal = document.getElementById('modal-group-info');
       if (infoModal && infoModal.classList.contains('open')) {
-          refreshGroupInfoModal();
+         refreshGroupInfoModal();
       }
     }
 
     // Action wrappers
     async function fsCreateGroup(data) {
-      const ref = await addDoc(collection(db, 'groups'), data);
+      const ref = await addDoc(getColl('groups'), data);
       return { id: ref.id, ...data };
     }
     async function fsUpdateGroup(groupId, data) {
-      await updateDoc(doc(db, 'groups', groupId), data);
+      await updateDoc(getDocRef('groups', groupId), data);
     }
     async function fsDeleteGroup(groupId) {
-      await deleteDoc(doc(db, 'groups', groupId));
+      await deleteDoc(getDocRef('groups', groupId));
     }
     async function fsGetGroupByCode(code) {
-      const q = query(collection(db, 'groups'), where('code', '==', code));
+      const q = query(getColl('groups'), where('code', '==', code));
       const snap = await getDocs(q);
       if (snap.empty) return null;
       return { id: snap.docs[0].id, ...snap.docs[0].data() };
     }
     async function fsAddExpense(data) {
-      const ref = await addDoc(collection(db, 'expenses'), data);
+      const ref = await addDoc(getColl('expenses'), data);
       return { id: ref.id, ...data };
     }
     async function fsDeleteExpense(expId) {
-      await deleteDoc(doc(db, 'expenses', expId));
+      await deleteDoc(getDocRef('expenses', expId));
     }
     async function fsAddSettlement(data) {
-      const ref = await addDoc(collection(db, 'settlements'), data);
+      const ref = await addDoc(getColl('settlements'), data);
       return { id: ref.id, ...data };
     }
     async function fsAddActivity(data) {
-      const ref = await addDoc(collection(db, 'activity'), data);
+      const ref = await addDoc(getColl('activity'), data);
       return { id: ref.id, ...data };
     }
     async function fsDeleteActivity(actId) {
-      await deleteDoc(doc(db, 'activity', actId));
+      await deleteDoc(getDocRef('activity', actId));
     }
 
     // ===================================================================
     //  AUTH LOGIC
     // ===================================================================
     async function initAuth() {
+      // Authenticate with Firebase to satisfy security rules constraints
+      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+        await signInWithCustomToken(auth, __initial_auth_token);
+      } else {
+        await signInAnonymously(auth);
+      }
+
+      // Check app specific local storage for login session
       const savedUserId = localStorage.getItem('splitEaseUserId');
       if (savedUserId) {
         try {
@@ -1813,8 +1844,6 @@
       const pass = document.getElementById('signup-pass').value;
       
       if (!name || !phone || !pass) { showToast("All fields are required"); return; }
-      
-      // Add strict 10-digit validation
       if (!/^\d{10}$/.test(phone)) { 
         showToast("Please enter a valid 10-digit mobile number"); 
         return; 
@@ -1899,8 +1928,6 @@
     window.revealPassword = function() {
       isPasswordRevealed = true;
       const display = document.getElementById('edit-password-display');
-      
-      // Safely grab password or fallback if none exists
       const realPwd = (state.currentUser && state.currentUser.password) ? state.currentUser.password : 'No password set';
       
       display.textContent = realPwd;
@@ -1909,7 +1936,6 @@
       document.getElementById('icon-eye-off').style.display = 'block';
       showToast('Identity verified. Password revealed.');
 
-      // Auto-hide after 10 seconds
       let secondsLeft = 10;
       const timerEl = document.getElementById('pwd-hide-timer');
       timerEl.style.display = 'block';
@@ -1974,20 +2000,17 @@
     }
 
     window.handleShowPassword = async function() {
-      // If already revealed — hide it
       if (isPasswordRevealed) {
         hidePassword();
         return;
       }
 
-      // Check WebAuthn support
       if (!window.PublicKeyCredential) {
         showToast('Biometric auth is not supported on this device/browser.');
         return;
       }
 
       try {
-        // Check platform authenticator (fingerprint/faceID)
         const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
         if (!available) {
           showToast('No biometric sensor found on this device.');
@@ -1998,7 +2021,6 @@
         return;
       }
 
-      // Show overlay while biometric prompt opens
       const bioSub = document.getElementById('bio-sub');
       bioSub.textContent = 'Use your fingerprint or Face ID to reveal your password.';
       document.getElementById('bio-overlay').classList.add('open');
@@ -2007,11 +2029,9 @@
         const storedId = localStorage.getItem('bioCredId');
 
         if (!storedId) {
-          // First time — register biometric
           bioSub.textContent = 'First time setup — register your fingerprint or Face ID.';
           await registerBiometric();
         } else {
-          // Already registered — just verify
           await verifyBiometric();
         }
 
@@ -2023,7 +2043,6 @@
         if (err.name === 'NotAllowedError') {
           showToast('Biometric verification cancelled or failed.');
         } else if (err.name === 'InvalidStateError') {
-          // Credential already registered — try verify instead
           try {
             await verifyBiometric();
             document.getElementById('bio-overlay').classList.remove('open');
@@ -2038,12 +2057,11 @@
       }
     }
 
-    // Override showEditProfilePage to reset password visibility
     window.showEditProfilePage = function() {
       showPage('page-edit-profile', true);
       document.getElementById('edit-name').value = state.currentUser.name;
       document.getElementById('edit-phone').value = state.currentUser.phone;
-      hidePassword(); // Make sure it's hidden when entering the page
+      hidePassword(); 
     }
 
     window.closeEditProfilePage = function() { navigate('home'); }
@@ -2070,76 +2088,74 @@
     }
 
     // ===================================================================
-    //  BALANCE CALCULATIONS
+    //  BALANCE CALCULATIONS (ACCURATE LEDGER MATH)
     // ===================================================================
     function calcGroupBalances(groupId) {
       const group = groupById(groupId);
       if (!group || !group.memberIds) return [];
       const members = group.memberIds;
-      const owes = {};
-      members.forEach(a => { owes[a] = {}; members.forEach(b => { if(a!==b) owes[a][b]=0; }); });
+      
+      // Step 1: Track the net balance per user. (+ means they are owed money, - means they owe money)
+      const netBalances = {};
+      members.forEach(m => netBalances[m] = 0);
 
+      // Step 2: Apply all Expenses
       const expenses = state.expenses.filter(e => e.groupId === groupId);
       expenses.forEach(exp => {
         const involvedMembers = exp.splitAmong && exp.splitAmong.length > 0 ? exp.splitAmong : members;
+        
+        // Payer gets credited with the full amount
+        if (netBalances[exp.paidBy] !== undefined) {
+           netBalances[exp.paidBy] += exp.amount;
+        }
+
+        // Each involved member gets debited their share
         involvedMembers.forEach(uid => {
-          if (uid === exp.paidBy) return;
           let share = 0;
           if (exp.splitType === 'equally') share = exp.amount / involvedMembers.length;
           else if (exp.splitType === 'unequally' || exp.splitType === 'fullAmount') share = (exp.shares && exp.shares[uid]) || 0;
           else if (exp.splitType === 'percentage') share = exp.amount * ((exp.percentages && exp.percentages[uid]) || 0) / 100;
-          owes[uid] = owes[uid] || {};
-          owes[uid][exp.paidBy] = (owes[uid][exp.paidBy] || 0) + share;
+
+          if (netBalances[uid] !== undefined) {
+             netBalances[uid] -= share;
+          }
         });
       });
 
+      // Step 3: Apply all Settlements (payments made to settle debts)
       const settlements = state.settlements.filter(s => s.groupId === groupId);
       settlements.forEach(s => {
         if (!s.fromId || !s.toId) return;
-        const fromOwesToId = owes[s.fromId] && owes[s.fromId][s.toId] !== undefined ? owes[s.fromId][s.toId] : 0;
-        if (fromOwesToId >= s.amount - 0.005) {
-          // Normal case: fromId owed toId, reduce it
-          if (owes[s.fromId]) owes[s.fromId][s.toId] = Math.max(0, fromOwesToId - s.amount);
-        } else {
-          // Reversal case: reduce what we can from this direction, 
-          // then add the remainder as credit in the other direction
-          const remainder = s.amount - fromOwesToId;
-          if (owes[s.fromId]) owes[s.fromId][s.toId] = 0;
-          if (owes[s.toId] && owes[s.toId][s.fromId] !== undefined) {
-            owes[s.toId][s.fromId] = Math.max(0, owes[s.toId][s.fromId] - remainder);
-          }
-        }
+        // Payer's balance increases (they paid off debt)
+        if (netBalances[s.fromId] !== undefined) netBalances[s.fromId] += s.amount;
+        // Receiver's balance decreases (they got their money)
+        if (netBalances[s.toId] !== undefined) netBalances[s.toId] -= s.amount;
+      });
+
+      // Step 4: Convert individual net balances into pairwise debts
+      const debtors = [];
+      const creditors = [];
+      members.forEach(uid => {
+         if (netBalances[uid] > 0.005) creditors.push({ id: uid, amount: netBalances[uid] });
+         else if (netBalances[uid] < -0.005) debtors.push({ id: uid, amount: -netBalances[uid] });
       });
 
       const balances = [];
-      const processedPairs = new Set(); // Keeps track of pairs we've already calculated
+      let d = 0, c = 0;
+      while (d < debtors.length && c < creditors.length) {
+         const debtor = debtors[d];
+         const creditor = creditors[c];
+         const min = Math.min(debtor.amount, creditor.amount);
 
-      members.forEach(fromId => {
-        members.forEach(toId => {
-          if (fromId !== toId) {
-            // Create a unique key for the pair (e.g., "UserA-UserB") so we only calculate their net balance once
-            const pairKey = [fromId, toId].sort().join('-');
-            if (processedPairs.has(pairKey)) return;
+         balances.push({ fromId: debtor.id, toId: creditor.id, amount: min });
 
-            // Get what they owe each other
-            const fromOwesTo = (owes[fromId] && owes[fromId][toId]) ? owes[fromId][toId] : 0;
-            const toOwesFrom = (owes[toId] && owes[toId][fromId]) ? owes[toId][fromId] : 0;
-            
-            // Calculate the net difference
-            const netAmount = fromOwesTo - toOwesFrom;
+         debtor.amount -= min;
+         creditor.amount -= min;
 
-            if (netAmount > 0.005) {
-              // Person A owes Person B more
-              balances.push({ fromId: fromId, toId: toId, amount: netAmount });
-            } else if (netAmount < -0.005) {
-              // Person B owes Person A more
-              balances.push({ fromId: toId, toId: fromId, amount: Math.abs(netAmount) });
-            }
-            
-            processedPairs.add(pairKey);
-          }
-        });
-      });
+         if (debtor.amount < 0.005) d++;
+         if (creditor.amount < 0.005) c++;
+      }
+
       return balances;
     }
 
@@ -2220,6 +2236,60 @@
       if (state.currentGroupId) renderGroupDetail(state.currentGroupId);
     }
 
+    window.openSettlementDetail = function(settlementId) {
+      state.currentSettlementId = settlementId;
+      showPage('page-settlement-detail', true);
+      const s = state.settlements.find(x => x.id === settlementId);
+      if (!s) return;
+      const fromU = userById(s.fromId);
+      const toU = userById(s.toId);
+      document.getElementById('settlement-detail-content').innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+           <div style="font-size: 42px; font-weight: 800; color: var(--primary);">${fmt(s.amount)}</div>
+           <div style="margin-top: 16px; font-size: 16px;">
+              <strong>${fromU?.name || 'Unknown'}</strong> paid <strong>${toU?.name || 'Unknown'}</strong>
+           </div>
+           <div style="margin-top: 8px; color: var(--text-muted); font-size: 13px;">${new Date(s.date).toLocaleString()}</div>
+           ${s.note ? `<div style="margin-top: 16px; font-style:italic; font-size: 14px;">"${s.note}"</div>` : ''}
+        </div>
+      `;
+    }
+
+    window.closeSettlementDetail = function() {
+      state.currentSettlementId = null;
+      showPage('page-group-detail', true);
+    }
+
+    window.deleteCurrentSettlement = async function() {
+      showConfirm("Delete Settlement", "Are you sure you want to delete this payment? It will reappear as an outstanding balance.").then(async ok => {
+         if(!ok) return;
+         const idToDel = state.currentSettlementId; // Save ID
+         try {
+            // INSTANT UI UPDATE: Instantly recalculate math
+            state.settlements = state.settlements.filter(s => s.id !== idToDel); 
+            
+            await deleteDoc(getDocRef('settlements', idToDel));
+            showToast("Settlement deleted");
+            closeSettlementDetail();
+         } catch(e) { 
+            showToast("Error deleting settlement"); 
+         }
+      });
+    }
+
+    window.toggleSettledExpenses = function() {
+      const container = document.getElementById('settled-expenses-container');
+      const toggle = document.getElementById('settled-expenses-toggle');
+      if (!container || !toggle) return;
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+        toggle.textContent = 'Hide settled expenses';
+      } else {
+        container.style.display = 'none';
+        toggle.textContent = 'All expenses before this date have been settled up. Tap to show settled expenses.';
+      }
+    }
+
     // ===================================================================
     //  JOIN GROUP BY CODE
     // ===================================================================
@@ -2242,7 +2312,6 @@
         if (grp.memberIds.includes(state.currentUser.id)) { showToast('You are already in this group!'); return; }
         const updatedMemberIds = [...grp.memberIds, state.currentUser.id];
         
-        // We let Real-time sync take over after we push the update
         await fsUpdateGroup(grp.id, { memberIds: updatedMemberIds });
         
         const actData = {
@@ -2287,7 +2356,6 @@
       document.getElementById('exp-desc').value = '';
       document.getElementById('exp-amount').value = '';
       
-      // Set default date to today's local date
       const today = new Date();
       const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
       document.getElementById('exp-date').value = localDate;
@@ -2684,7 +2752,6 @@
         if (!ok) return;
         const newMemberIds = grp.memberIds.filter(id => id !== userId);
         
-        // Track removed members ONLY if someone else kicked them out
         const removedMembers = grp.removedMembers ? [...grp.removedMembers] : [];
         if (!isMe && !removedMembers.includes(userId)) {
             removedMembers.push(userId);
@@ -2693,7 +2760,6 @@
         try {
           await fsUpdateGroup(grp.id, { memberIds: newMemberIds, removedMembers });
 
-          // Show a better activity message depending on if they left or were kicked
           const actDesc = isMe 
             ? `${state.currentUser.name} left the group.` 
             : `${state.currentUser.name} removed ${u.name} from the group.`;
@@ -2704,17 +2770,15 @@
             amount: null, date: new Date().toISOString()
           };
           await fsAddActivity(actData);
-      
+       
           showToast(`${isMe ? 'Left' : 'Removed'} ${isMe ? 'group' : u.name}`);
           
-          // If it was myself, navigate out completely and update UI instantly.
           if (isMe) {
             closeModal('modal-group-info');
             state.currentGroupId = null;
-            // Instantly remove it from local state so it disappears without delay
             state.groups = state.groups.filter(g => g.id !== grp.id);
             showPage('page-groups', false);
-            renderGroups(); // Refresh the list immediately
+            renderGroups();
           }
         } catch(e) {
           showToast('Error removing member');
@@ -2737,10 +2801,9 @@
         try {
           for (const gid of idsToDelete) {
             await fsDeleteGroup(gid);
-            // Note: Realistically sub-collections should be deleted on server, but doing it manually
-            const eq = query(collection(db, 'expenses'), where('groupId', '==', gid));
-            const sq = query(collection(db, 'settlements'), where('groupId', '==', gid));
-            const aq = query(collection(db, 'activity'), where('groupId', '==', gid));
+            const eq = query(getColl('expenses'), where('groupId', '==', gid));
+            const sq = query(getColl('settlements'), where('groupId', '==', gid));
+            const aq = query(getColl('activity'), where('groupId', '==', gid));
             const [exps, setts, acts] = await Promise.all([getDocs(eq), getDocs(sq), getDocs(aq)]);
             for (const e of exps.docs) await deleteDoc(e.ref);
             for (const s of setts.docs) await deleteDoc(s.ref);
@@ -2806,101 +2869,14 @@
       showConfirm('Delete Expense', 'Are you sure you want to delete this expense?').then(async ok => {
         if (!ok) return;
         const grpId = state.currentGroupId;
-        const exp = state.expenses.find(e => e.id === state.currentExpenseId);
-        if (!exp) return;
-
+        const expIdToDel = state.currentExpenseId; // Save the ID to delete
+        
         try {
-          const groupSettlements = state.settlements.filter(s => s.groupId === grpId && !s.isDeltaSettle);
-          let latestSettlementTime = 0;
-          if (groupSettlements.length > 0) {
-            latestSettlementTime = Math.max(...groupSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
-          }
-          const expCreatedAt = toDate(exp.createdAt || exp.date).getTime();
-          const isSettledExpense = latestSettlementTime > 0 && expCreatedAt <= latestSettlementTime;
-
-          if (isSettledExpense) {
-            const grp = groupById(grpId);
-            const members = grp.memberIds;
-
-            // Step 1: Calculate what the ORIGINAL settled amount was for this expense
-            // Original = what was settled = based on createdAt snapshot
-            // We don't have the original amount stored separately, but the settlement
-            // covered ALL settled expenses together. So we recalculate:
-            // settled_balance = sum of all settled expenses' contributions
-            // new_settled_balance = settled_balance MINUS this expense's current contribution
-            // new_settlement = new_settled_balance per pair
-
-            // Get all settled expenses EXCEPT the one being deleted
-            const remainingSettledExpenses = state.expenses.filter(e =>
-              e.id !== state.currentExpenseId &&
-              e.groupId === grpId &&
-              toDate(e.createdAt || e.date).getTime() <= latestSettlementTime
-            );
-
-            // Compute what remainingSettled expenses owe per pair
-            const tempOwes = {};
-            members.forEach(a => { tempOwes[a] = {}; members.forEach(b => { if(a!==b) tempOwes[a][b]=0; }); });
-
-            remainingSettledExpenses.forEach(e => {
-              const involved = e.splitAmong && e.splitAmong.length > 0 ? e.splitAmong : members;
-              involved.forEach(uid => {
-                if (uid === e.paidBy) return;
-                let share = 0;
-                if (e.splitType === 'equally') share = e.amount / involved.length;
-                else if (e.splitType === 'unequally' || e.splitType === 'fullAmount') share = (e.shares && e.shares[uid]) || 0;
-                else if (e.splitType === 'percentage') share = e.amount * ((e.percentages && e.percentages[uid]) || 0) / 100;
-                tempOwes[uid][e.paidBy] = (tempOwes[uid][e.paidBy] || 0) + share;
-              });
-            });
-
-            // Delete ALL existing settlements for this group
-            for (const s of groupSettlements) {
-              await deleteDoc(doc(db, 'settlements', s.id));
-            }
-
-            // Re-record settlements ONLY for remaining settled expenses
-            const processedPairs = new Set();
-            for (const fromId of members) {
-              for (const toId of members) {
-                if (fromId === toId) continue;
-                const pairKey = [fromId, toId].sort().join('-');
-                if (processedPairs.has(pairKey)) continue;
-                processedPairs.add(pairKey);
-                const net = (tempOwes[fromId][toId] || 0) - (tempOwes[toId][fromId] || 0);
-                if (net > 0.005) {
-                  await fsAddSettlement({
-                    groupId: grpId, fromId, toId, amount: net,
-                    note: 'Auto-recalculated after expense deletion',
-                    date: new Date().toISOString(),
-                    createdAt: new Date().toISOString()
-                  });
-                }
-              }
-            }
-          }
-
-          // --- NEW FIX START: Clean up related Delta Settlements ---
-          const deltaSettlements = state.settlements.filter(s => 
-            s.groupId === grpId && s.isDeltaSettle && (s.note || '').includes(exp.desc)
-          );
-          for (const ds of deltaSettlements) {
-            await deleteDoc(doc(db, 'settlements', ds.id));
-          }
-          // --- NEW FIX END ---
-
-          // Delete the expense itself
-          await fsDeleteExpense(state.currentExpenseId);
-
-          // --- NEW FIX START: Total Wipe if Group is Empty ---
-          // If this was the last expense, wipe ALL remaining settlements to prevent phantom credits
-          const remainingExps = state.expenses.filter(e => e.groupId === grpId && e.id !== state.currentExpenseId);
-          if (remainingExps.length === 0) {
-            const allSettlements = state.settlements.filter(s => s.groupId === grpId);
-            for (const s of allSettlements) {
-              await deleteDoc(doc(db, 'settlements', s.id));
-            }
-          }
-          // --- NEW FIX END ---
+          // 1. INSTANT UI UPDATE: Remove from local math immediately to fix balances
+          state.expenses = state.expenses.filter(e => e.id !== expIdToDel);
+          
+          // 2. Delete from database
+          await fsDeleteExpense(expIdToDel);
 
           const actData = {
             type: 'expense_added', groupId: grpId, actorId: state.currentUser.id,
@@ -2915,132 +2891,6 @@
           showToast("Expense deleted");
         } catch(e) {
           showToast('Error deleting expense');
-          console.error(e);
-        }
-      });
-    }
-
-    function calcExpenseContribution(expSnapshot, groupMembers) {
-      // Returns a map of { "fromId->toId": amount } showing what this expense
-      // makes each person owe each other
-      const owes = {};
-      const involved = expSnapshot.splitAmong && expSnapshot.splitAmong.length > 0
-        ? expSnapshot.splitAmong : groupMembers;
-
-      involved.forEach(uid => {
-        if (uid === expSnapshot.paidBy) return;
-        let share = 0;
-        if (expSnapshot.splitType === 'equally') {
-          share = expSnapshot.amount / involved.length;
-        } else if (expSnapshot.splitType === 'unequally' || expSnapshot.splitType === 'fullAmount') {
-          share = (expSnapshot.shares && expSnapshot.shares[uid]) || 0;
-        } else if (expSnapshot.splitType === 'percentage') {
-          share = expSnapshot.amount * ((expSnapshot.percentages && expSnapshot.percentages[uid]) || 0) / 100;
-        }
-        if (share > 0.005) {
-          const key = `${uid}->${expSnapshot.paidBy}`;
-          owes[key] = (owes[key] || 0) + share;
-        }
-      });
-      return owes;
-    }
-
-    window.settleEditedExpense = function() {
-      const exp = state.expenses.find(e => e.id === state.currentExpenseId);
-      if (!exp) return;
-
-      if (!exp.previousSnapshot) {
-        showToast('No previous snapshot found. Use group Settle instead.');
-        return;
-      }
-
-      const grp = groupById(exp.groupId);
-      const members = grp.memberIds;
-
-      // What the expense contributed BEFORE the edit
-      const oldContrib = calcExpenseContribution(exp.previousSnapshot, members);
-
-      // What the expense contributes NOW after the edit
-      const newContrib = calcExpenseContribution({
-        amount: exp.amount,
-        paidBy: exp.paidBy,
-        splitType: exp.splitType,
-        splitAmong: exp.splitAmong,
-        shares: exp.shares,
-        percentages: exp.percentages
-      }, members);
-
-      // Collect all unique pair keys from both old and new
-      const allKeys = new Set([...Object.keys(oldContrib), ...Object.keys(newContrib)]);
-
-      // Delta = new - old for each pair
-      const deltas = [];
-      allKeys.forEach(key => {
-        const oldAmt = oldContrib[key] || 0;
-        const newAmt = newContrib[key] || 0;
-        const delta = newAmt - oldAmt;
-        if (Math.abs(delta) > 0.005) {
-          const [fromId, toId] = key.split('->');
-          if (delta > 0) {
-            // fromId owes toId MORE than before
-            deltas.push({ fromId, toId, amount: delta });
-          } else {
-            // fromId actually owes toId LESS than before — toId owes fromId the difference
-            deltas.push({ fromId: toId, toId: fromId, amount: Math.abs(delta) });
-          }
-        }
-      });
-
-      if (deltas.length === 0) {
-        showToast('No balance change to settle.');
-        return;
-      }
-
-      // Build a readable summary for the confirm dialog
-      const summary = deltas.map(d => {
-        const fromU = userById(d.fromId);
-        const toU = userById(d.toId);
-        const fromName = d.fromId === state.currentUser.id ? 'You' : fromU?.name || d.fromId;
-        const toName = d.toId === state.currentUser.id ? 'you' : toU?.name || d.toId;
-        return `${fromName} owe${fromName === 'You' ? '' : 's'} ${toName} ${fmt(d.amount)} more`;
-      }).join('\n');
-
-      showConfirm('Settle Edit Difference', `Settling only the change caused by editing "${exp.desc}":\n\n${summary}`).then(async ok => {
-        if (!ok) return;
-        try {
-          for (const d of deltas) {
-            const settlData = {
-              groupId: exp.groupId,
-              fromId: d.fromId,
-              toId: d.toId,
-              amount: d.amount,
-              note: `Delta settle after editing: ${exp.desc}`,
-              date: new Date().toISOString(),
-              createdAt: new Date().toISOString(),
-              isDeltaSettle: true
-            };
-            await fsAddSettlement(settlData);
-
-            const fromU = userById(d.fromId);
-            const toU = userById(d.toId);
-            const actData = {
-              type: 'settlement',
-              groupId: exp.groupId,
-              actorId: state.currentUser.id,
-              desc: `${fromU?.name} paid ${toU?.name} ${fmt(d.amount)} (edit difference for "${exp.desc}")`,
-              amount: d.amount,
-              date: new Date().toISOString()
-            };
-            await fsAddActivity(actData);
-          }
-
-          // Clear previousSnapshot now that delta is settled
-          await updateDoc(doc(db, 'expenses', exp.id), { previousSnapshot: null, updatedAt: null });
-
-          showToast('Edit difference settled! 🎉');
-          document.getElementById('btn-settle-edited-expense').style.display = 'none';
-        } catch(e) {
-          showToast('Error settling difference');
           console.error(e);
         }
       });
@@ -3122,7 +2972,6 @@
       }
       
       try {
-        // Read the date input, fallback to current time if empty
         const dateInput = document.getElementById('exp-date').value;
         const expenseDate = dateInput ? new Date(dateInput).toISOString() : new Date().toISOString();
 
@@ -3151,12 +3000,12 @@
       }
     }
 
-window.openRenameGroupModal = function() {
+    window.openRenameGroupModal = function() {
       const grp = groupById(state.currentGroupId);
       if (!grp) return;
       document.getElementById('rename-grp-name').value = grp.name;
-      closeModal('modal-group-info'); // Close the info modal
-      showModal('modal-rename-group'); // Open the rename modal
+      closeModal('modal-group-info'); 
+      showModal('modal-rename-group'); 
     }
 
     window.confirmRenameGroup = async function() {
@@ -3175,12 +3024,10 @@ window.openRenameGroupModal = function() {
       }
 
       try {
-        // Update Firestore
         await fsUpdateGroup(grp.id, { name: newName });
         
-        // Add an activity log so everyone sees the change
         const actData = {
-          type: 'group_created', // Re-using the party popper icon
+          type: 'group_created',
           groupId: grp.id, 
           actorId: state.currentUser.id,
           desc: `${state.currentUser.name} renamed the group to "${newName}"`,
@@ -3191,9 +3038,6 @@ window.openRenameGroupModal = function() {
         
         closeModal('modal-rename-group');
         showToast('Group renamed successfully!');
-        
-        // Note: Because of your robust startRealtimeSync() setup, 
-        // the UI (headers, lists, etc.) will update automatically!
       } catch(e) {
         showToast('Error renaming group');
         console.error(e);
@@ -3234,7 +3078,7 @@ window.openRenameGroupModal = function() {
       if (!name) { showToast('Please enter a name'); return; }
       if (!email) { showToast('Please enter a contact number/email'); return; }
       try {
-        const existingQ = query(collection(db, 'users'), where('phone', '==', email));
+        const existingQ = query(getColl('users'), where('phone', '==', email));
         const existingSnap = await getDocs(existingQ);
         if (!existingSnap.empty) { showToast('User already exists'); return; }
         const color = COLORS[Math.floor(Math.random() * COLORS.length)];
@@ -3293,7 +3137,6 @@ window.openRenameGroupModal = function() {
         try {
           const grp = groupById(groupId);
           if (!grp) return;
-          // Completely wipe the user's ID from the removedMembers array so they don't see it anymore
           const newRemoved = (grp.removedMembers || []).filter(id => id !== state.currentUser.id);
           await fsUpdateGroup(groupId, { removedMembers: newRemoved });
           
@@ -3368,10 +3211,7 @@ window.openRenameGroupModal = function() {
       }
       
       el.innerHTML = state.groups.map(g => {
-        // Has the current user been removed from this group?
         const isRemoved = g.removedMembers && g.removedMembers.includes(state.currentUser.id);
-        
-        // Completely Restricted View if the user is removed
         if (isRemoved) {
           return `
             <div class="list-item" style="border: 1.5px solid var(--danger); background: var(--danger-light); flex-direction: column; align-items: flex-start; gap: 12px; cursor: default;">
@@ -3386,7 +3226,6 @@ window.openRenameGroupModal = function() {
             </div>`;
         }
 
-        // Normal View
         const bal = calcGroupBalances(g.id);
         let net = 0;
         bal.forEach(b => {
@@ -3411,78 +3250,89 @@ window.openRenameGroupModal = function() {
       }).join('');
     }
 
-    function generateExpenseListHTML(expList, group, latestSettlementTime = 0) {
+    function generateUnifiedListHTML(items, group, isSettled = false) {
       let currentMonthStr = '';
-      let expHTML = '';
-      expList.forEach(exp => {
-        const expDate = toDate(exp.date);
-        const monthStrFull = expDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-        const monthShort = expDate.toLocaleString('default', { month: 'short' });
-        const dayStr = expDate.getDate().toString().padStart(2, '0');
+      let listHTML = '';
+      items.forEach(item => {
+        const itemDate = toDate(item.date);
+        const monthStrFull = itemDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+        const monthShort = itemDate.toLocaleString('default', { month: 'short' });
+        const dayStr = itemDate.getDate().toString().padStart(2, '0');
+        
         if (monthStrFull !== currentMonthStr) {
-          expHTML += `<div class="expense-month-header">${monthStrFull}</div>`;
+          listHTML += `<div class="expense-month-header">${monthStrFull}</div>`;
           currentMonthStr = monthStrFull;
         }
-        const payer = userById(exp.paidBy);
-        const involvedMembers = exp.splitAmong && exp.splitAmong.length > 0 ? exp.splitAmong : group.memberIds;
-        const iAmInvolved = involvedMembers.includes(state.currentUser.id);
-        let myShare = 0;
-        if (iAmInvolved) {
-          if (exp.splitType === 'equally') myShare = exp.amount / involvedMembers.length;
-          else if (exp.splitType === 'unequally' || exp.splitType === 'fullAmount') myShare = (exp.shares && exp.shares[state.currentUser.id]) || 0;
-          else if (exp.splitType === 'percentage') myShare = exp.amount * ((exp.percentages && exp.percentages[state.currentUser.id]) || 0) / 100;
-        }
-        const iAmPayer = exp.paidBy === state.currentUser.id;
-        let statusText = '', shareValue = '', statusColor = 'var(--text-muted)';
-        if (!iAmInvolved) {
-          statusText = 'not involved'; shareValue = '';
-        } else if (iAmPayer) {
-          const getBack = exp.amount - myShare;
-          if (getBack > 0.005) { statusText = 'you lent'; shareValue = fmt(getBack); statusColor = 'var(--primary)'; }
-          else { statusText = 'no split'; shareValue = ''; }
+
+        if (item.isSettlement) {
+           const fromU = userById(item.fromId);
+           const toU = userById(item.toId);
+           const clickAttr = isSettled ? '' : `onclick="openSettlementDetail('${item.id}')"`;
+           const cursorStyle = isSettled ? 'cursor: default; opacity: 0.8;' : 'cursor: pointer;';
+           listHTML += `
+           <div class="list-item" ${clickAttr} style="border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 16px 0; background: transparent; margin-bottom: 0; ${cursorStyle}">
+             <div style="display: flex; flex-direction: column; align-items: center; width: 36px; flex-shrink: 0; align-items: flex-start;">
+               <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">${monthShort}</span>
+               <span style="font-size: 18px; color: var(--text);">${dayStr}</span>
+             </div>
+             <div style="width: 45px; height: 45px; background: var(--primary-light); color: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-left: -20px; flex-shrink: 0;">
+               💸
+             </div>
+             <div style="flex: 1; margin-left: -5px; min-width: 0;">
+               <div style="font-size: 15px; color: var(--text); font-weight: 600;">Payment</div>
+               <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">${fromU?.name || 'Unknown'} paid ${toU?.name || 'Unknown'}</div>
+             </div>
+             <div style="text-align: right; flex-shrink: 0; margin-left: 8px;">
+               <div style="font-size: 15px; color: var(--primary); font-weight: 700;">${fmt(item.amount)}</div>
+             </div>
+           </div>`;
         } else {
-          statusText = 'you borrowed'; shareValue = fmt(myShare); statusColor = 'var(--borrowed)';
+           const payer = userById(item.paidBy);
+           const involvedMembers = item.splitAmong && item.splitAmong.length > 0 ? item.splitAmong : group.memberIds;
+           const iAmInvolved = involvedMembers.includes(state.currentUser.id);
+           let myShare = 0;
+           if (iAmInvolved) {
+             if (item.splitType === 'equally') myShare = item.amount / involvedMembers.length;
+             else if (item.splitType === 'unequally' || item.splitType === 'fullAmount') myShare = (item.shares && item.shares[state.currentUser.id]) || 0;
+             else if (item.splitType === 'percentage') myShare = item.amount * ((item.percentages && item.percentages[state.currentUser.id]) || 0) / 100;
+           }
+           const iAmPayer = item.paidBy === state.currentUser.id;
+           let statusText = '', shareValue = '', statusColor = 'var(--text-muted)';
+           if (!iAmInvolved) {
+             statusText = 'not involved'; shareValue = '';
+           } else if (iAmPayer) {
+             const getBack = item.amount - myShare;
+             if (getBack > 0.005) { statusText = 'you lent'; shareValue = fmt(getBack); statusColor = 'var(--primary)'; }
+             else { statusText = 'no split'; shareValue = ''; }
+           } else {
+             statusText = 'you borrowed'; shareValue = fmt(myShare); statusColor = 'var(--borrowed)';
+           }
+           const payerText = iAmPayer ? `You paid ${fmt(item.amount)}` : `${payer?.name || 'Unknown'} paid ${fmt(item.amount)}`;
+
+           const clickAttr = isSettled ? '' : `onclick="openExpenseDetail('${item.id}')"`;
+           const cursorStyle = isSettled ? 'cursor: default; opacity: 0.8;' : 'cursor: pointer;';
+
+           listHTML += `
+           <div class="list-item" ${clickAttr} style="border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 16px 0; background: transparent; margin-bottom: 0; position: relative; ${cursorStyle}">
+             <div style="display: flex; flex-direction: column; align-items: center; width: 36px; flex-shrink: 0; text-align: left; align-items: flex-start;">
+               <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">${monthShort}</span>
+               <span style="font-size: 18px; color: var(--text);">${dayStr}</span>
+             </div>
+             <div style="width: 45px; height: 45px; background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 6px rgba(0,0,0,0.05); color: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-left: -20px; flex-shrink: 0; overflow: hidden; padding: 2px;">
+               ${getExpenseImageHtml(item.desc, item.category)}
+             </div>
+             <div style="flex: 1; margin-left: -5px; min-width: 0;">
+               <div style="font-size: 15px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.desc}</div>
+               <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">${payerText}</div>
+             </div>
+             <div style="text-align: right; flex-shrink: 0; margin-left: 8px;">
+               <div style="font-size: 12px; color: ${statusColor}; margin-bottom: 2px;">${statusText}</div>
+               <div style="font-size: 15px; color: ${statusColor};">${shareValue}</div>
+             </div>
+           </div>`;
         }
-        const payerText = iAmPayer ? `You paid ${fmt(exp.amount)}` : `${payer?.name || 'Unknown'} paid ${fmt(exp.amount)}`;
-
-        // Green dot: expense is in settled list but was edited after settlement
-        const isEditedAfterSettle = latestSettlementTime > 0
-          && exp.updatedAt
-          && new Date(exp.updatedAt).getTime() > latestSettlementTime;
-
-        expHTML += `
-        <div class="list-item" onclick="openExpenseDetail('${exp.id}')" style="border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 16px 0; background: transparent; margin-bottom: 0; position: relative;">
-          ${isEditedAfterSettle ? `<span style="position:absolute;top:32px;right:393px;width:9px;height:9px;background:#22c55e;border-radius:50%;box-shadow:0 0 0 2px white;z-index:2;"></span>` : ''}
-          <div style="display: flex; flex-direction: column; align-items: center; width: 36px; flex-shrink: 0; text-align: left; align-items: flex-start;">
-            <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">${monthShort}</span>
-            <span style="font-size: 18px; color: var(--text);">${dayStr}</span>
-          </div>
-          <div style="width: 45px; height: 45px; background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 6px rgba(0,0,0,0.05); color: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-left: -20px; flex-shrink: 0; overflow: hidden; padding: 2px;">
-            ${getExpenseImageHtml(exp.desc, exp.category)}
-          </div>
-          <div style="flex: 1; margin-left: -5px; min-width: 0;">
-            <div style="font-size: 15px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${exp.desc}</div>
-            <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">${payerText}</div>
-          </div>
-          <div style="text-align: right; flex-shrink: 0; margin-left: 8px;">
-            <div style="font-size: 12px; color: ${statusColor}; margin-bottom: 2px;">${statusText}</div>
-            <div style="font-size: 15px; color: ${statusColor};">${shareValue}</div>
-          </div>
-        </div>`;
       });
-      return expHTML;
-    }
-
-    window.toggleSettledExpenses = function() {
-      const container = document.getElementById('settled-expenses-container');
-      const toggle = document.getElementById('settled-expenses-toggle');
-      if (container.style.display === 'none') {
-        container.style.display = 'block';
-        toggle.textContent = 'Hide settled expenses';
-      } else {
-        container.style.display = 'none';
-        toggle.textContent = 'All expenses before this date have been settled up. Tap to show settled expenses.';
-      }
+      return listHTML;
     }
 
     function renderGroupDetail(groupId) {
@@ -3516,43 +3366,81 @@ window.openRenameGroupModal = function() {
         summaryContainer.style.display = 'none';
       }
 
-      const expenses = state.expenses.filter(e => e.groupId === groupId).sort((a,b) => new Date(toDate(b.date))-new Date(toDate(a.date)));
+      const expenses = state.expenses.filter(e => e.groupId === groupId);
+      const settlements = state.settlements.filter(s => s.groupId === groupId);
+      
+      const combinedItems = [
+         ...expenses.map(e => ({...e, isExpense: true})),
+         ...settlements.map(s => ({...s, isSettlement: true}))
+      ];
+      combinedItems.sort((a,b) => new Date(toDate(b.date)) - new Date(toDate(a.date)));
+
       const expEl = document.getElementById('tab-content-expenses');
-      if (expenses.length === 0) {
+      if (combinedItems.length === 0) {
         expEl.innerHTML = `<div class="empty-state">
           <div class="empty-icon">💰</div>
           <div class="empty-title">No expenses yet</div>
           <div class="empty-sub">Add the first expense for this group.</div>
         </div>`;
       } else {
-        const groupSettlements = state.settlements.filter(s => s.groupId === groupId && !s.isDeltaSettle);
+        const groupSettlements = settlements;
         let latestSettlementTime = 0;
         if (groupSettlements.length > 0) {
           latestSettlementTime = Math.max(...groupSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
         }
-        
-        let activeExpenses = [], settledExpenses = [];
-        if (latestSettlementTime > 0) {
-          // An expense is settled if its createdAt <= latestSettlementTime
-          // AND it has NOT been edited after the settlement (no updatedAt, or updatedAt <= latestSettlementTime)
-          // An expense stays settled (but with green dot) if createdAt <= T1 but updatedAt > T1
-          activeExpenses = expenses.filter(e => toDate(e.createdAt || e.date).getTime() > latestSettlementTime);
-          settledExpenses = expenses.filter(e => toDate(e.createdAt || e.date).getTime() <= latestSettlementTime);
-        } else {
-          activeExpenses = expenses;
+
+        const hasEditedSettledExp = expenses.some(e => 
+          toDate(e.createdAt || e.date).getTime() <= latestSettlementTime &&
+          e.updatedAt && new Date(e.updatedAt).getTime() > latestSettlementTime
+        );
+
+        const activeItems = [];
+        const settledItems = [];
+
+        combinedItems.forEach(item => {
+          const itemTime = toDate(item.createdAt || item.date).getTime();
+          let isActive = false;
+
+          if (itemTime > latestSettlementTime) {
+            isActive = true;
+          } else {
+            // Trigger active state for edited settled expenses
+            if (item.isExpense && item.updatedAt && new Date(item.updatedAt).getTime() > latestSettlementTime) {
+              isActive = true;
+            } 
+            // Only pull the Payment message into the active list if an expense was edited
+            else if (item.isSettlement && itemTime === latestSettlementTime && hasEditedSettledExp) {
+              isActive = true;
+            }
+          }
+
+          if (isActive) {
+            activeItems.push(item);
+          } else {
+            // Only push EXPENSES into the settled list. 
+            // This prevents the payment message from showing up in the settled list.
+            if (item.isExpense) {
+              settledItems.push(item);
+            }
+          }
+        });
+
+        let html = '';
+        if (activeItems.length > 0) {
+          html += generateUnifiedListHTML(activeItems, group);
         }
 
-        let expHTML = generateExpenseListHTML(activeExpenses, group, 0);
-        if (settledExpenses.length > 0) {
-          expHTML += `
+        if (settledItems.length > 0) {
+          html += `
             <div id="settled-expenses-toggle" onclick="toggleSettledExpenses()" style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 24px 0; line-height: 1.5; cursor: pointer; text-decoration: underline;">
               All expenses before this date have been settled up. Tap to show settled expenses.
             </div>
             <div id="settled-expenses-container" style="display: none;">
-              ${generateExpenseListHTML(settledExpenses, group, latestSettlementTime)}
-            </div>`;
+              ${generateUnifiedListHTML(settledItems, group, true)}
+            </div>
+          `;
         }
-        expEl.innerHTML = expHTML;
+        expEl.innerHTML = html;
       }
     }
 
@@ -3561,24 +3449,12 @@ window.openRenameGroupModal = function() {
       if(!exp) return;
       const grp = groupById(exp.groupId);
 
-      // Show/hide settle button for edited-after-settlement expenses
-      const groupSettlements = state.settlements.filter(s => s.groupId === exp.groupId && !s.isDeltaSettle);
-      let latestSettlementTime = 0;
-      if (groupSettlements.length > 0) {
-        latestSettlementTime = Math.max(...groupSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
-      }
-      const isEditedAfterSettle = latestSettlementTime > 0
-        && exp.updatedAt
-        && new Date(exp.updatedAt).getTime() > latestSettlementTime
-        && toDate(exp.createdAt || exp.date).getTime() <= latestSettlementTime;
-      const settleBtn = document.getElementById('btn-settle-edited-expense');
-      if (settleBtn) settleBtn.style.display = isEditedAfterSettle ? 'inline-flex' : 'none';
-
       document.getElementById('detail-expense-title').textContent = exp.desc;
       document.getElementById('detail-expense-meta').textContent = relTime(exp.date);
       document.getElementById('detail-expense-amount').textContent = fmt(exp.amount);
       const payer = userById(exp.paidBy);
       document.getElementById('detail-expense-paidby').textContent = `Paid by ${payer.id === state.currentUser.id ? 'You' : payer.name}`;
+      
       const splitsEl = document.getElementById('detail-expense-splits');
       const involvedMembers = (exp.splitAmong && exp.splitAmong.length > 0) ? exp.splitAmong : grp.memberIds;
       splitsEl.innerHTML = involvedMembers.map(uid => {
@@ -3610,6 +3486,35 @@ window.openRenameGroupModal = function() {
           </div>
         </div>`;
       }).join('');
+
+      // History renderer
+      const historyContainer = document.getElementById('detail-expense-history');
+      if (exp.history && exp.history.length > 0) {
+         let hHTML = '<div class="section-title" style="margin-top:24px;">Edit History</div>';
+         const reversedHistory = [...exp.history].reverse();
+         reversedHistory.forEach((h) => {
+            const hPayer = userById(h.paidBy);
+            const editor = userById(h.editedBy);
+            hHTML += `
+            <div class="list-item" style="cursor:default; padding: 14px 16px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:8px; display:block;">
+               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                 <span style="font-size:12px; color:var(--text-muted); font-weight:600;">Edited by ${editor?.name || 'Someone'}</span>
+                 <span style="font-size:11px; color:var(--text-muted);">${new Date(h.editedAt).toLocaleString('default', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
+               </div>
+               <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                 <span style="font-size:14px; font-weight:700; color:var(--text);">${h.desc}</span>
+                 <span style="font-size:14px; font-weight:800; color:var(--text);">${fmt(h.amount)}</span>
+               </div>
+               <div style="font-size:13px; color:var(--text-muted);">
+                 Paid by ${hPayer?.name || 'Unknown'} • Split ${h.splitType}
+               </div>
+            </div>`;
+         });
+         historyContainer.innerHTML = hHTML;
+         historyContainer.style.display = 'block';
+      } else {
+         historyContainer.style.display = 'none';
+      }
     }
 
     function renderActivityItem(a) {
@@ -3712,7 +3617,6 @@ window.openRenameGroupModal = function() {
       document.getElementById('exp-desc').value = exp.desc;
       document.getElementById('exp-amount').value = exp.amount;
       
-      // Populate the existing date
       if (exp.date) {
         const expDateObj = new Date(exp.date);
         const localExpDate = new Date(expDateObj.getTime() - (expDateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
@@ -3785,23 +3689,37 @@ window.openRenameGroupModal = function() {
       }
       
       try {
-        // Read updated date
         const dateInput = document.getElementById('exp-date').value;
-        const expenseDate = dateInput ? new Date(dateInput).toISOString() : new Date().toISOString();
-
-        // Save old snapshot for delta calculation
+        
+        // --- PRESERVE EXACT TIME FOR FLAWLESS SORTING ---
+        let expenseDate = new Date().toISOString();
         const oldExp = state.expenses.find(e => e.id === editingExpenseId);
-        const previousSnapshot = {
-          amount: oldExp.amount,
-          paidBy: oldExp.paidBy,
-          splitType: oldExp.splitType,
-          splitAmong: oldExp.splitAmong ? [...oldExp.splitAmong] : [],
-          shares: oldExp.shares ? { ...oldExp.shares } : {},
-          percentages: oldExp.percentages ? { ...oldExp.percentages } : {}
-        };
+        
+        if (dateInput) {
+            const origDate = new Date(oldExp.date);
+            const newDate = new Date(dateInput);
+            // Apply original hours/minutes to the new date so it stays below the Payment message
+            newDate.setHours(origDate.getHours(), origDate.getMinutes(), origDate.getSeconds());
+            expenseDate = newDate.toISOString();
+        }
 
-        const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate, updatedAt: new Date().toISOString(), previousSnapshot };
-        await updateDoc(doc(db, 'expenses', editingExpenseId), updatedData);
+        // Save old state into history array
+        const historyEntry = {
+           amount: oldExp.amount,
+           desc: oldExp.desc,
+           paidBy: oldExp.paidBy,
+           splitType: oldExp.splitType,
+           splitAmong: oldExp.splitAmong ? [...oldExp.splitAmong] : [],
+           shares: oldExp.shares ? { ...oldExp.shares } : {},
+           percentages: oldExp.percentages ? { ...oldExp.percentages } : {},
+           date: oldExp.updatedAt || oldExp.createdAt || oldExp.date,
+           editedAt: new Date().toISOString(),
+           editedBy: state.currentUser.id
+        };
+        const history = oldExp.history ? [...oldExp.history, historyEntry] : [historyEntry];
+
+        const updatedData = { desc, amount, paidBy, splitType, splitAmong, shares, percentages, date: expenseDate, history, updatedAt: new Date().toISOString() };
+        await updateDoc(getDocRef('expenses', editingExpenseId), updatedData);
         
         const actData = {
           type: 'expense_added', groupId: exp.groupId, actorId: state.currentUser.id,
