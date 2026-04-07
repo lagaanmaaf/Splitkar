@@ -945,7 +945,7 @@
           <div id="detail-expense-meta" style="font-size:12px;color:var(--text-muted);"></div>
         </div>
         <div style="display:flex; gap:8px;">
-          <button class="btn-icon" style="background:var(--primary-light);color:var(--primary);border:none;width:36px;height:36px;" onclick="editCurrentExpense()" title="Edit Expense">
+          <button id="btn-edit-expense" class="btn-icon" style="background:var(--primary-light);color:var(--primary);border:none;width:36px;height:36px;" onclick="editCurrentExpense()" title="Edit Expense">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
           </button>
           <button class="btn-icon" style="background:var(--danger-light);color:var(--danger);border:none;width:36px;height:36px;" onclick="deleteCurrentExpense()" title="Delete Expense">
@@ -3450,6 +3450,21 @@
       const exp = state.expenses.find(e => e.id === state.currentExpenseId);
       if(!exp) return;
       const grp = groupById(exp.groupId);
+
+      // --- START: Check if expense is settled and hide Edit button ---
+      const groupSettlements = state.settlements.filter(s => s.groupId === exp.groupId);
+      let latestSettlementTime = 0;
+      if (groupSettlements.length > 0) {
+        latestSettlementTime = Math.max(...groupSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
+      }
+      const expTime = toDate(exp.createdAt || exp.date).getTime();
+      const isSettled = expTime <= latestSettlementTime && !(exp.updatedAt && new Date(exp.updatedAt).getTime() > latestSettlementTime);
+
+      const editBtn = document.getElementById('btn-edit-expense');
+      if (editBtn) {
+        editBtn.style.display = isSettled ? 'none' : 'flex';
+      }
+      // --- END ---
 
       document.getElementById('detail-expense-title').textContent = exp.desc;
       document.getElementById('detail-expense-meta').textContent = relTime(exp.date);
