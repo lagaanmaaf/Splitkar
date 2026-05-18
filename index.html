@@ -1368,21 +1368,42 @@
     <div class="modal-overlay" id="modal-settle">
       <div class="modal">
         <div class="modal-handle"></div>
-        <div class="modal-title">Settle Up</div>
+        <div class="modal-title" id="settle-modal-title">Settle Up</div>
         <div class="modal-body">
-          <div id="settle-info" style="margin-bottom:16px;"></div>
-          <div class="form-group">
-            <label class="form-label">Amount (₹)</label>
-            <input class="form-input" id="settle-amount" type="number" step="0.01" />
+
+          <!-- STEP 1: Choose settle type -->
+          <div id="settle-step-1">
+            <div id="settle-info" style="margin-bottom:20px;"></div>
+            <div onclick="chooseSettleType('full')" style="display:flex;flex-direction:column;gap:4px;padding:18px 20px;border-radius:14px;background:var(--card);border:2px solid var(--border);margin-bottom:12px;cursor:pointer;transition:border-color 0.15s,background 0.15s;" id="settle-option-full">
+              <div style="font-size:16px;font-weight:800;color:var(--text);">✅ Settle Completely</div>
+              <div style="font-size:13px;color:var(--text-muted);">Record full payment of the exact amount owed</div>
+            </div>
+            <div onclick="chooseSettleType('custom')" style="display:flex;flex-direction:column;gap:4px;padding:18px 20px;border-radius:14px;background:var(--card);border:2px solid var(--border);cursor:pointer;transition:border-color 0.15s,background 0.15s;" id="settle-option-custom">
+              <div style="font-size:16px;font-weight:800;color:var(--text);">💸 Enter Amount Paid</div>
+              <div style="font-size:13px;color:var(--text-muted);">Enter a custom amount (partial or different payment)</div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Note (optional)</label>
-            <input class="form-input" id="settle-note" placeholder="Via UPI, etc." />
+
+          <!-- STEP 2: Custom amount + payer -->
+          <div id="settle-step-2" style="display:none;">
+            <div id="settle-info-2" style="margin-bottom:16px;"></div>
+            <div class="form-group">
+              <label class="form-label">Who Paid?</label>
+              <div id="settle-payer-options" style="display:flex;flex-direction:column;gap:8px;"></div>
+            </div>
+            <div class="form-group" style="margin-top:16px;">
+              <label class="form-label">Amount Paid (₹)</label>
+              <input class="form-input" id="settle-amount" type="number" step="0.01" placeholder="Enter amount" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Note (optional)</label>
+              <input class="form-input" id="settle-note" placeholder="Via UPI, cash, etc." />
+            </div>
           </div>
+
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer" id="settle-modal-footer">
           <button class="btn btn-ghost" onclick="closeModal('modal-settle')">Cancel</button>
-          <button class="btn btn-primary" onclick="confirmSettle()">Confirm Payment</button>
         </div>
       </div>
     </div>
@@ -2907,29 +2928,42 @@
       if (!grp) return;
       const balances = calcGroupBalances(state.currentGroupId);
       if (balances.length === 0) { showToast('Already all settled up!'); return; }
-      showConfirm('Settle All', `Settle all outstanding balances in "${grp.name}"?`).then(async ok => {
-        if (!ok) return;
-        try {
-          for (const b of balances) {
-            const settlData = {
-              groupId: state.currentGroupId, fromId: b.fromId, toId: b.toId,
-              amount: b.amount, note: 'Settle All', date: new Date().toISOString(),
-              createdAt: new Date().toISOString()
-            };
-            await fsAddSettlement(settlData);
-            
-            const fromU = userById(b.fromId);
-            const toU = userById(b.toId);
-            const actData = {
-              type: 'settlement', groupId: state.currentGroupId, actorId: b.fromId,
-              desc: `${fromU.name} paid ${toU.name} ${fmt(b.amount)} (Settled up)`,
-              amount: b.amount, date: new Date().toISOString()
-            };
-            await fsAddActivity(actData);
-          }
-          showToast('All settled up! 🎉');
-        } catch(e) { showToast('Error settling expenses'); }
-      });
+
+      const myBalances = balances.filter(b => b.fromId === state.currentUser.id || b.toId === state.currentUser.id);
+      if (myBalances.length === 1) {
+        const b = myBalances[0];
+        openSettle(b.fromId, b.toId, state.currentGroupId, b.amount);
+      } else {
+        openSettlePickerModal(balances, state.currentGroupId);
+      }
+    }
+
+    window.openSettlePickerModal = function(balances, groupId) {
+      const rowsHTML = balances.map(b => {
+        const from = userById(b.fromId), to = userById(b.toId);
+        if (!from || !to) return '';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);">`
+          + avatarHtml(from, 'avatar-sm')
+          + `<div style="flex:1;font-size:14px;"><strong>${from.name}</strong> <span style="color:var(--text-muted);">owes</span> <strong>${to.name}</strong><div style="font-size:13px;font-weight:700;color:var(--borrowed);">${fmt(b.amount)}</div></div>`
+          + avatarHtml(to, 'avatar-sm')
+          + `<button onclick="closeModal('modal-settle-picker');openSettle('${b.fromId}','${b.toId}','${groupId}',${b.amount})" style="background:var(--primary);color:white;border:none;border-radius:100px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;">Settle</button>`
+          + `</div>`;
+      }).join('');
+
+      let pickerModal = document.getElementById('modal-settle-picker');
+      if (!pickerModal) {
+        pickerModal = document.createElement('div');
+        pickerModal.className = 'modal-overlay';
+        pickerModal.id = 'modal-settle-picker';
+        pickerModal.innerHTML = `<div class="modal"><div class="modal-handle"></div><div class="modal-title">Settle Balances</div><div class="modal-body"><div id="settle-picker-rows"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-settle-picker')">Close</button></div></div>`;
+        document.getElementById('app').appendChild(pickerModal);
+      }
+
+      document.getElementById('settle-picker-rows').innerHTML = rowsHTML;
+      pickerModal.addEventListener('click', function(e) {
+        if (e.target === this) closeModal('modal-settle-picker');
+      }, { once: true });
+      pickerModal.classList.add('open');
     }
 
     window.addExpense = async function() {
@@ -3106,43 +3140,155 @@
     }
 
     let settleContext = null;
+    let settleSelectedPayerId = null;
+
     window.openSettle = function(fromId, toId, groupId, amount) {
       settleContext = { fromId, toId, groupId, amount };
+      settleSelectedPayerId = fromId; // default payer is the debtor
+
       const from = userById(fromId), to = userById(toId);
-      document.getElementById('settle-info').innerHTML = `
+      const infoHTML = `
         <div class="settle-row">
           ${avatarHtml(from)}
           <div class="settle-arrow">owes<br/><strong>${fmt(amount)}</strong></div>
           ${avatarHtml(to)}
           <div style="font-size:13px;"><strong>${from.name}</strong><div class="list-sub">${to.name}</div></div>
         </div>`;
-      document.getElementById('settle-amount').value = amount.toFixed(2);
+
+      document.getElementById('settle-info').innerHTML = infoHTML;
+      document.getElementById('settle-info-2').innerHTML = infoHTML;
+      document.getElementById('settle-amount').value = '';
       document.getElementById('settle-note').value = '';
+
+      // Reset to step 1
+      document.getElementById('settle-step-1').style.display = 'block';
+      document.getElementById('settle-step-2').style.display = 'none';
+      document.getElementById('settle-modal-title').textContent = 'Settle Up';
+      document.getElementById('settle-modal-footer').innerHTML = `<button class="btn btn-ghost" onclick="closeModal('modal-settle')">Cancel</button>`;
+
+      // Reset option highlight
+      document.getElementById('settle-option-full').style.borderColor = 'var(--border)';
+      document.getElementById('settle-option-custom').style.borderColor = 'var(--border)';
+
       showModal('modal-settle');
     }
 
-    window.confirmSettle = async function() {
+    window.chooseSettleType = function(type) {
+      if (!settleContext) return;
+
+      if (type === 'full') {
+        // Immediately confirm the full amount
+        const from = userById(settleContext.fromId), to = userById(settleContext.toId);
+        document.getElementById('settle-option-full').style.borderColor = 'var(--primary)';
+        document.getElementById('settle-option-full').style.background = 'var(--primary-light)';
+        setTimeout(async () => {
+          try {
+            const settlData = { ...settleContext, amount: settleContext.amount, note: 'Settled completely', settlementType: 'full', date: new Date().toISOString(), createdAt: new Date().toISOString() };
+            await fsAddSettlement(settlData);
+            const actData = {
+              type: 'settlement', groupId: settleContext.groupId, actorId: settleContext.fromId,
+              desc: `${from.name} paid ${to.name} ${fmt(settleContext.amount)} (Settled completely)`,
+              amount: settleContext.amount, date: new Date().toISOString()
+            };
+            await fsAddActivity(actData);
+            closeModal('modal-settle');
+            showToast('Settled completely! 🎉');
+          } catch(e) {
+            showToast('Error recording settlement');
+            document.getElementById('settle-option-full').style.borderColor = 'var(--border)';
+            document.getElementById('settle-option-full').style.background = 'var(--card)';
+          }
+        }, 200);
+
+      } else {
+        // Go to step 2 — custom amount + payer
+        const grp = groupById(settleContext.groupId);
+        const from = userById(settleContext.fromId), to = userById(settleContext.toId);
+
+        // Build payer options (all group members)
+        const payerOptionsHTML = grp.memberIds.map(id => {
+          const u = userById(id);
+          if (!u) return '';
+          const isSelected = id === settleContext.fromId;
+          return `<div class="payer-option ${isSelected ? 'selected' : ''}" id="settle-payer-opt-${id}" onclick="selectSettlePayer('${id}')">
+            ${avatarHtml(u, 'avatar-sm')}
+            <span>${u.name}${id === state.currentUser.id ? ' (You)' : ''}</span>
+          </div>`;
+        }).join('');
+
+        document.getElementById('settle-payer-options').innerHTML = payerOptionsHTML;
+        settleSelectedPayerId = settleContext.fromId;
+
+        // Pre-fill amount
+        document.getElementById('settle-amount').value = settleContext.amount.toFixed(2);
+
+        document.getElementById('settle-step-1').style.display = 'none';
+        document.getElementById('settle-step-2').style.display = 'block';
+        document.getElementById('settle-modal-title').textContent = 'Enter Payment Details';
+        document.getElementById('settle-modal-footer').innerHTML = `
+          <button class="btn btn-ghost" onclick="backToSettleStep1()">Back</button>
+          <button class="btn btn-primary" onclick="confirmCustomSettle()">Confirm Payment</button>`;
+      }
+    }
+
+    window.selectSettlePayer = function(userId) {
+      settleSelectedPayerId = userId;
+      document.querySelectorAll('.payer-option[id^="settle-payer-opt-"]').forEach(el => el.classList.remove('selected'));
+      const sel = document.getElementById('settle-payer-opt-' + userId);
+      if (sel) sel.classList.add('selected');
+    }
+
+    window.backToSettleStep1 = function() {
+      document.getElementById('settle-step-1').style.display = 'block';
+      document.getElementById('settle-step-2').style.display = 'none';
+      document.getElementById('settle-modal-title').textContent = 'Settle Up';
+      document.getElementById('settle-modal-footer').innerHTML = `<button class="btn btn-ghost" onclick="closeModal('modal-settle')">Cancel</button>`;
+      document.getElementById('settle-option-full').style.borderColor = 'var(--border)';
+      document.getElementById('settle-option-full').style.background = 'var(--card)';
+      document.getElementById('settle-option-custom').style.borderColor = 'var(--border)';
+      document.getElementById('settle-option-custom').style.background = 'var(--card)';
+    }
+
+    window.confirmCustomSettle = async function() {
       if (!settleContext) return;
       const amount = parseFloat(document.getElementById('settle-amount').value);
       const note = document.getElementById('settle-note').value.trim();
-      if (!amount || amount <= 0) { showToast('Invalid amount'); return; }
+      if (!amount || amount <= 0) { showToast('Please enter a valid amount'); return; }
+      if (!settleSelectedPayerId) { showToast('Please select who paid'); return; }
+
+      const payerId = settleSelectedPayerId;
+      // The receiver is whoever is NOT the payer among the original pair
+      const receiverId = payerId === settleContext.fromId ? settleContext.toId : settleContext.fromId;
+
+      const payer = userById(payerId), receiver = userById(receiverId);
       try {
-        const settlData = { ...settleContext, amount, note, date: new Date().toISOString(), createdAt: new Date().toISOString() };
+        const settlData = {
+          groupId: settleContext.groupId,
+          fromId: payerId,
+          toId: receiverId,
+          amount, note,
+          settlementType: 'partial',
+          date: new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        };
         await fsAddSettlement(settlData);
-        
-        const from = userById(settleContext.fromId), to = userById(settleContext.toId);
+
+        const actDesc = `${payer.name} paid ${receiver.name} ${fmt(amount)}${note ? ` (${note})` : ''}`;
         const actData = {
-          type: 'settlement', groupId: settleContext.groupId, actorId: settleContext.fromId,
-          desc: `${from.name} paid ${to.name} ${fmt(amount)}`, amount, date: new Date().toISOString()
+          type: 'settlement', groupId: settleContext.groupId, actorId: payerId,
+          desc: actDesc, amount, date: new Date().toISOString()
         };
         await fsAddActivity(actData);
-        
+
         closeModal('modal-settle');
-        showToast('Settlement recorded!');
+        showToast('Payment recorded!');
       } catch(e) {
-        showToast('Error recording settlement');
+        showToast('Error recording payment');
       }
     }
+
+    // Keep old confirmSettle as alias (used by settleAllExpenses internally, kept for safety)
+    window.confirmSettle = window.confirmCustomSettle;
 
     window.deleteRemovedGroup = async function(groupId) {
       showConfirm('Delete Group', 'Remove this group from your list completely?').then(async ok => {
@@ -3280,7 +3426,29 @@
         }
 
         if (item.isSettlement) {
-           // Skip rendering settlement payment rows entirely
+           if (item.settlementType === 'partial') {
+             const payer = userById(item.fromId);
+             const receiver = userById(item.toId);
+             const payerName = item.fromId === state.currentUser.id ? 'You' : (payer?.name || 'Unknown');
+             const receiverName = item.toId === state.currentUser.id ? 'you' : (receiver?.name || 'Unknown');
+             const noteText = item.note && item.note !== 'Settled completely' ? ` · ${item.note}` : '';
+             listHTML += `
+             <div class="list-item" style="border:none;border-bottom:1px solid var(--border);border-radius:0;padding:16px 0;background:transparent;margin-bottom:0;">
+               <div style="display:flex;flex-direction:column;align-items:flex-start;width:36px;flex-shrink:0;">
+                 <span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">${monthShort}</span>
+                 <span style="font-size:18px;color:var(--text);">${dayStr}</span>
+               </div>
+               <div style="width:45px;height:45px;background:var(--card);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-left:-20px;flex-shrink:0;">💸</div>
+               <div style="flex:1;margin-left:-5px;min-width:0;">
+                 <div style="font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${payerName} paid ${fmt(item.amount)} to ${receiverName}</div>
+                 <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">Partial payment${noteText}</div>
+               </div>
+               <div style="text-align:right;flex-shrink:0;margin-left:8px;">
+                 <div style="font-size:16px;font-weight:700;color:var(--text-muted);">${fmt(item.amount)}</div>
+               </div>
+             </div>`;
+           }
+           // full settlements are hidden (they go to settled list)
         } else {
            const payer = userById(item.paidBy);
            const involvedMembers = item.splitAmong && item.splitAmong.length > 0 ? item.splitAmong : group.memberIds;
@@ -3339,10 +3507,16 @@
       balances.forEach(b => {
         if (b.toId === state.currentUser.id) {
           const other = userById(b.fromId);
-          summaryHTML += `<div style="font-size: 16px; color: var(--text); margin-bottom: 4px;">${other.name} owes you <span class="text-primary">${fmt(b.amount)}</span></div>`;
+          summaryHTML += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">`
+            + `<div style="font-size:15px;color:var(--text);">${other.name} owes you <span class="text-primary" style="font-weight:700;">${fmt(b.amount)}</span></div>`
+            + `<button onclick="openSettle('${b.fromId}','${b.toId}','${groupId}',${b.amount})" style="background:var(--primary);color:white;border:none;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Settle</button>`
+            + `</div>`;
         } else if (b.fromId === state.currentUser.id) {
           const other = userById(b.toId);
-          summaryHTML += `<div style="font-size: 16px; color: var(--text); margin-bottom: 4px;">You owe ${other.name} <span class="text-borrowed">${fmt(b.amount)}</span></div>`;
+          summaryHTML += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">`
+            + `<div style="font-size:15px;color:var(--text);">You owe ${other.name} <span class="text-borrowed" style="font-weight:700;">${fmt(b.amount)}</span></div>`
+            + `<button onclick="openSettle('${b.fromId}','${b.toId}','${groupId}',${b.amount})" style="background:var(--primary);color:white;border:none;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Settle</button>`
+            + `</div>`;
         }
       });
 
@@ -3386,8 +3560,9 @@
       } else {
         const groupSettlements = settlements;
         let latestSettlementTime = 0;
-        if (groupSettlements.length > 0) {
-          latestSettlementTime = Math.max(...groupSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
+        const fullSettlements = groupSettlements.filter(s => !s.settlementType || s.settlementType === 'full');
+        if (fullSettlements.length > 0) {
+          latestSettlementTime = Math.max(...fullSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
         }
 
         const activeItems = [];
@@ -3397,9 +3572,11 @@
           const itemTime = toDate(item.createdAt || item.date).getTime();
           let isActive = false;
 
-          if (item.isSettlement) {
-            // Settlements always go to settled list
+          if (item.isSettlement && item.settlementType !== 'partial') {
+            // Only full settlements go to settled list; partial payments stay active
             isActive = false;
+          } else if (item.isSettlement && item.settlementType === 'partial') {
+            isActive = true;
           } else if (itemTime > latestSettlementTime) {
             isActive = true;
           } else {
@@ -3441,8 +3618,9 @@
 
       const groupSettlements = state.settlements.filter(s => s.groupId === exp.groupId);
       let latestSettlementTime = 0;
-      if (groupSettlements.length > 0) {
-        latestSettlementTime = Math.max(...groupSettlements.map(s => toDate(s.createdAt || s.date).getTime()));
+      const fullSettlementsExp = groupSettlements.filter(s => !s.settlementType || s.settlementType === 'full');
+      if (fullSettlementsExp.length > 0) {
+        latestSettlementTime = Math.max(...fullSettlementsExp.map(s => toDate(s.createdAt || s.date).getTime()));
       }
       const expCreatedTime = toDate(exp.createdAt || exp.date).getTime();
       const isEditedAfterSettle = exp.updatedAt && new Date(exp.updatedAt).getTime() > latestSettlementTime;
